@@ -223,16 +223,56 @@ add_custom_target(image
     USES_TERMINAL
 )
 
-# Flash target (requires Python venv setup)
+# Python venv setup
 set(GROVE_VENV_DIR ${GROVE_ROOT_DIR}/.venv)
 set(GROVE_XMODEM_SCRIPT ${GROVE_EXTERNAL_DIR}/xmodem/xmodem_send.py)
 
 if(GROVE_PLATFORM STREQUAL "windows")
     set(GROVE_PYTHON_VENV ${GROVE_VENV_DIR}/Scripts/python.exe)
+    set(GROVE_PIP_VENV ${GROVE_VENV_DIR}/Scripts/pip.exe)
 else()
     set(GROVE_PYTHON_VENV ${GROVE_VENV_DIR}/bin/python)
+    set(GROVE_PIP_VENV ${GROVE_VENV_DIR}/bin/pip)
 endif()
 
+# Auto-setup Python venv at configure time if not exists
+if(NOT EXISTS "${GROVE_PYTHON_VENV}")
+    message(STATUS "Setting up Python virtual environment...")
+    find_program(PYTHON3_EXECUTABLE python3 python)
+    if(NOT PYTHON3_EXECUTABLE)
+        message(WARNING "Python3 not found. Run 'cmake --build . --target setup_venv' manually.")
+    else()
+        execute_process(
+            COMMAND ${PYTHON3_EXECUTABLE} -m venv ${GROVE_VENV_DIR}
+            WORKING_DIRECTORY ${GROVE_ROOT_DIR}
+            RESULT_VARIABLE VENV_RESULT
+        )
+        if(VENV_RESULT EQUAL 0)
+            message(STATUS "Installing Python packages...")
+            execute_process(
+                COMMAND ${GROVE_PIP_VENV} install --upgrade pip
+                WORKING_DIRECTORY ${GROVE_ROOT_DIR}
+                OUTPUT_QUIET
+            )
+            execute_process(
+                COMMAND ${GROVE_PIP_VENV} install -r ${GROVE_EXTERNAL_DIR}/xmodem/requirements.txt
+                WORKING_DIRECTORY ${GROVE_ROOT_DIR}
+                RESULT_VARIABLE PIP_RESULT
+            )
+            if(PIP_RESULT EQUAL 0)
+                message(STATUS "Python virtual environment ready at ${GROVE_VENV_DIR}")
+            else()
+                message(WARNING "Failed to install Python packages")
+            endif()
+        else()
+            message(WARNING "Failed to create virtual environment")
+        endif()
+    endif()
+else()
+    message(STATUS "Python virtual environment: ${GROVE_VENV_DIR} (exists)")
+endif()
+
+# Flash target
 add_custom_target(flash
     COMMAND ${GROVE_PYTHON_VENV} ${GROVE_XMODEM_SCRIPT}
         --port=${GROVE_SERIAL_PORT}
@@ -245,13 +285,14 @@ add_custom_target(flash
     USES_TERMINAL
 )
 
-# Setup Python venv target
+# Manual setup_venv target (for recreating venv)
 add_custom_target(setup_venv
-    COMMAND python3 -m venv ${GROVE_VENV_DIR}
-    COMMAND ${GROVE_PYTHON_VENV} -m pip install --upgrade pip
-    COMMAND ${GROVE_PYTHON_VENV} -m pip install -r ${GROVE_EXTERNAL_DIR}/xmodem/requirements.txt
+    COMMAND ${CMAKE_COMMAND} -E remove_directory ${GROVE_VENV_DIR}
+    COMMAND ${PYTHON3_EXECUTABLE} -m venv ${GROVE_VENV_DIR}
+    COMMAND ${GROVE_PIP_VENV} install --upgrade pip
+    COMMAND ${GROVE_PIP_VENV} install -r ${GROVE_EXTERNAL_DIR}/xmodem/requirements.txt
     WORKING_DIRECTORY ${GROVE_ROOT_DIR}
-    COMMENT "Setting up Python virtual environment"
+    COMMENT "Recreating Python virtual environment"
     USES_TERMINAL
 )
 
@@ -268,6 +309,6 @@ message(STATUS "Available targets:")
 message(STATUS "  cmake --build . --target firmware       - Build firmware")
 message(STATUS "  cmake --build . --target firmware_clean - Clean build")
 message(STATUS "  cmake --build . --target image          - Generate flashable image")
-message(STATUS "  cmake --build . --target setup_venv     - Setup Python venv for flashing")
+message(STATUS "  cmake --build . --target setup_venv     - Recreate Python venv")
 message(STATUS "  cmake --build . --target flash          - Flash to device (set GROVE_SERIAL_PORT)")
 message(STATUS "")
