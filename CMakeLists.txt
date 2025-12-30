@@ -4,7 +4,7 @@ project(GroveVisionAI_V2 LANGUAGES C CXX ASM)
 # Check and initialize git submodules if needed
 find_package(Git QUIET)
 if(GIT_FOUND)
-    set(GROVE_SUBMODULE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/Seeed_Grove_Vision_AI_Module_V2")
+    set(GROVE_SUBMODULE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/sdk")
 
     # Check if submodule directory exists and has content
     if(NOT EXISTS "${GROVE_SUBMODULE_DIR}/.git" AND NOT EXISTS "${GROVE_SUBMODULE_DIR}/EPII_CM55M_APP_S")
@@ -38,7 +38,7 @@ if(GIT_FOUND)
     endif()
 else()
     message(WARNING "Git not found. Cannot automatically initialize submodules. "
-        "Please ensure external/Seeed_Grove_Vision_AI_Module_V2 is populated.")
+        "Please ensure external/sdk is populated.")
 endif()
 
 # Options
@@ -64,7 +64,7 @@ set_property(CACHE GROVE_OLEVEL PROPERTY STRINGS O0 O1 O2 O3 Os Ofast Og)
 
 # Paths
 set(GROVE_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-set(GROVE_EXTERNAL_DIR ${GROVE_ROOT_DIR}/external/Seeed_Grove_Vision_AI_Module_V2)
+set(GROVE_EXTERNAL_DIR ${GROVE_ROOT_DIR}/external/sdk)
 set(GROVE_TOOLCHAIN_DIR ${GROVE_ROOT_DIR}/toolchain)
 set(GROVE_BUILD_DIR ${GROVE_ROOT_DIR}/build)
 set(GROVE_OUTPUT_DIR ${GROVE_ROOT_DIR}/output)
@@ -107,7 +107,7 @@ else()
     message(FATAL_ERROR "Unsupported platform: ${CMAKE_HOST_SYSTEM_NAME}")
 endif()
 
-set(GROVE_TOOLCHAIN_VERSION "13.2.rel1")
+set(GROVE_TOOLCHAIN_VERSION "13.2.Rel1")
 set(GROVE_TOOLCHAIN_NAME "arm-gnu-toolchain-${GROVE_TOOLCHAIN_VERSION}-${GROVE_TOOLCHAIN_SUFFIX}-arm-none-eabi")
 set(GROVE_TOOLCHAIN_PATH ${GROVE_TOOLCHAIN_DIR}/${GROVE_TOOLCHAIN_NAME})
 
@@ -195,7 +195,7 @@ add_custom_target(firmware ALL
 
 # Clean target
 add_custom_target(firmware_clean
-    COMMAND ${GROVE_MAKE_COMMAND} clean
+    COMMAND ${GROVE_MAKE_COMMAND} ${GROVE_MAKE_OPTS} clean
     WORKING_DIRECTORY ${GROVE_FIRMWARE_DIR}
     COMMENT "Cleaning firmware build"
     USES_TERMINAL

@@ -6,7 +6,7 @@ $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectDir = Split-Path -Parent $ScriptDir
 $VenvDir = Join-Path $ProjectDir ".venv"
-$RequirementsFile = Join-Path $ProjectDir "external\Seeed_Grove_Vision_AI_Module_V2\xmodem\requirements.txt"
+$RequirementsFile = Join-Path $ProjectDir "external\sdk\xmodem\requirements.txt"
 
 Write-Host "=== Grove Vision AI V2 - Python Environment Setup ===" -ForegroundColor Cyan
 Write-Host "Project directory: $ProjectDir"
@@ -90,7 +90,7 @@ Write-Host "To activate the virtual environment:"
 Write-Host "  $VenvDir\Scripts\Activate.ps1"
 Write-Host ""
 Write-Host "To flash firmware to device:"
-Write-Host "  python $ProjectDir\external\Seeed_Grove_Vision_AI_Module_V2\xmodem\xmodem_send.py ``"
+Write-Host "  python $ProjectDir\external\sdk\xmodem\xmodem_send.py ``"
 Write-Host "    --port=COM3 ``"
 Write-Host "    --baudrate=921600 ``"
 Write-Host "    --protocol=xmodem ``"

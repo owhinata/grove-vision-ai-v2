@@ -94,7 +94,7 @@ source .venv/bin/activate  # Linux/macOS
 .\.venv\Scripts\Activate.ps1  # Windows
 
 # 書き込み
-python external/Seeed_Grove_Vision_AI_Module_V2/xmodem/xmodem_send.py \
+python external/sdk/xmodem/xmodem_send.py \
     --port=/dev/ttyACM0 \
     --baudrate=921600 \
     --protocol=xmodem \
@@ -160,7 +160,7 @@ grove-vision-ai-v2/
 │   ├── setup_venv.sh           # Python venv セットアップ (Linux/macOS)
 │   └── setup_venv.ps1          # Python venv セットアップ (Windows)
 ├── external/
-│   └── Seeed_Grove_Vision_AI_Module_V2/  # サブモジュール
+│   └── sdk/  # Seeed Grove Vision AI Module V2 サブモジュール
 ├── toolchain/                  # ダウンロードされたツールチェーン
 ├── build/                      # CMakeビルドディレクトリ
 ├── output/                     # 生成されたイメージ

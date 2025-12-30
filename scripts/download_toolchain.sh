@@ -4,7 +4,7 @@
 
 set -e
 
-TOOLCHAIN_VERSION="13.2.rel1"
+TOOLCHAIN_VERSION="13.2.Rel1"
 TOOLCHAIN_DIR="${TOOLCHAIN_DIR:-$(dirname "$0")/../toolchain}"
 TOOLCHAIN_DIR=$(cd "$(dirname "$0")" && cd .. && pwd)/toolchain
 
