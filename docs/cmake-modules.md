@@ -7,17 +7,17 @@ This directory contains CMake modules for building applications with the Grove V
 The modules are organized in a hierarchical dependency structure:
 
 ```
-                    cmsis_core (INTERFACE)
-                         |
-              +----------+----------+
-              |                     |
-       drivers_interface       [direct use]
-        (INTERFACE)                 |
-              |                     |
-              +----------+----------+
-                         |
-                      device
-                         |
+                         cmsis_core (INTERFACE)
+                              |
+              +---------------+---------------+
+              |               |               |
+       drivers_interface  cmsis_dsp       cmsis_nn
+        (INTERFACE)      (STATIC)        (STATIC)
+              |               |               |
+              +-------+-------+-------+-------+
+                      |
+                   device
+                      |
          +-------+-------+-------+-------+-------+
          |       |       |       |       |       |
        board  interface common trustzone freertos ...
@@ -272,6 +272,114 @@ target_link_libraries(my_app PRIVATE freertos)
 
 ---
 
+## DSP/ML Modules
+
+### cmsis_dsp.cmake
+
+**Type:** Static library (or INTERFACE for prebuilt)
+
+**Purpose:** CMSIS-DSP library with MVE-optimized math functions (FFT, matrix operations, filters, etc.).
+
+**Dependencies:** `cmsis_core`
+
+**Configuration Options:**
+| Option | Default | Description |
+|--------|---------|-------------|
+| `SDK_CMSIS_DSP_FORCE_PREBUILT` | OFF | Use prebuilt library |
+
+**PUBLIC Includes:**
+- `${SDK_ROOT}/library/cmsis_dsp`
+- `${SDK_ROOT}/library/cmsis_dsp/Include`
+- `${SDK_ROOT}/library/cmsis_dsp/Include/dsp`
+- `${SDK_ROOT}/library/cmsis_dsp/PrivateInclude`
+- `${SDK_ROOT}/library/cmsis_dsp/ComputeLibrary/Include`
+
+**PUBLIC Definitions:**
+- `LIB_CMSIS_DSP` - CMSIS-DSP library enabled
+- `ARM_MATH_MVEI` - MVE intrinsics
+- `ARM_MATH_DSP` - DSP extensions
+- `ARM_MATH_LOOPUNROLL` - Loop unrolling optimization
+
+**Source Directories:**
+- BasicMathFunctions
+- StatisticsFunctions_Used
+- MatrixFunctions
+- ComplexMathFunctions_Used
+- FastMathFunctions
+- CommonTables_Used
+- TransformFunctions_Used
+- SupportFunctions
+
+**Function:**
+```cmake
+sdk_add_cmsis_dsp_library(TARGET_NAME)
+```
+
+**Usage:**
+```cmake
+include(${CMAKE_CURRENT_LIST_DIR}/cmsis_dsp.cmake)
+sdk_add_cmsis_dsp_library(cmsis_dsp)
+target_link_libraries(my_app PRIVATE cmsis_dsp)
+```
+
+---
+
+### cmsis_nn.cmake
+
+**Type:** Static library (or INTERFACE for prebuilt)
+
+**Purpose:** CMSIS-NN neural network library with MVE-optimized kernels for inference.
+
+**Dependencies:** `cmsis_core`
+
+**Configuration Options:**
+| Option | Default | Description |
+|--------|---------|-------------|
+| `SDK_CMSIS_NN_FORCE_PREBUILT` | OFF | Use prebuilt library |
+| `SDK_CMSIS_NN_VERSION` | 7_0_0 | CMSIS-NN version |
+
+**PUBLIC Includes:**
+- `${SDK_ROOT}/library/cmsis_nn/cmsis_nn_${version}`
+- `${SDK_ROOT}/library/cmsis_nn/cmsis_nn_${version}/Include`
+- `${SDK_ROOT}/library/cmsis_nn/cmsis_nn_${version}/Include/Internal`
+
+**PUBLIC Definitions:**
+- `LIB_CMSIS_NN` - CMSIS-NN library enabled
+- `ARM_MATH_MVEI` - MVE intrinsics
+- `ARM_MATH_DSP` - DSP extensions
+- `ARM_MATH_LOOPUNROLL` - Loop unrolling optimization
+
+**Source Directories:**
+- ActivationFunctions
+- BasicMathFunctions
+- ConcatenationFunctions
+- ConvolutionFunctions
+- FullyConnectedFunctions
+- LSTMFunctions
+- NNSupportFunctions
+- PadFunctions
+- PoolingFunctions
+- ReshapeFunctions
+- SoftmaxFunctions
+- SVDFunctions
+- TransposeFunctions
+
+**Function:**
+```cmake
+sdk_add_cmsis_nn_library(TARGET_NAME)
+```
+
+**Usage:**
+```cmake
+include(${CMAKE_CURRENT_LIST_DIR}/cmsis_nn.cmake)
+sdk_add_cmsis_nn_library(cmsis_nn)
+target_link_libraries(my_app PRIVATE cmsis_nn)
+```
+
+---
+
+## Event Handler Modules
+
 ### event_handler.cmake
 
 **Type:** Static library
@@ -344,38 +452,6 @@ sdk_add_tflm_library(TARGET_NAME)
 set(SDK_TFLM_USE_CMSIS_NN ON)
 include(${CMAKE_CURRENT_LIST_DIR}/tflm.cmake)
 sdk_add_tflm_library(tflm_lib)
-```
-
----
-
-### cmsis_nn.cmake
-
-**Type:** Static library (or INTERFACE for prebuilt)
-
-**Purpose:** CMSIS-NN neural network library with MVE optimization.
-
-**Dependencies:** `cmsis_core`
-
-**Configuration Options:**
-| Option | Default | Description |
-|--------|---------|-------------|
-| `SDK_CMSIS_NN_FORCE_PREBUILT` | OFF | Use prebuilt library |
-| `SDK_CMSIS_NN_VERSION` | 7_0_0 | CMSIS-NN version |
-
-**PUBLIC Includes:**
-- `${SDK_ROOT}/library/cmsis_nn/cmsis_nn_${version}`
-- `${SDK_ROOT}/library/cmsis_nn/cmsis_nn_${version}/Include`
-- `${SDK_ROOT}/library/cmsis_nn/cmsis_nn_${version}/Include/Internal`
-
-**PUBLIC Definitions:**
-- `LIB_CMSIS_NN`
-- `ARM_MATH_MVEI` - MVE intrinsics
-- `ARM_MATH_DSP` - DSP extensions
-- `ARM_MATH_LOOPUNROLL` - Loop unrolling optimization
-
-**Function:**
-```cmake
-sdk_add_cmsis_nn_library(TARGET_NAME)
 ```
 
 ---
@@ -540,9 +616,11 @@ Application
     |
     +-- event_handler
     |
-    +-- tflm_lib --------+-- cmsis_core
+    +-- cmsis_dsp -------+-- cmsis_core
     |                    |
     +-- cmsis_nn --------+
+    |                    |
+    +-- tflm_lib --------+
     |
     +-- pwrmgmt (prebuilt)
 ```
@@ -557,15 +635,17 @@ The SDK code has tight coupling between modules (e.g., device sources include bo
 
 ### Building from Source vs Prebuilt
 
-TFLM and CMSIS-NN can be built from source (default) or use prebuilt libraries:
+TFLM, CMSIS-DSP, and CMSIS-NN can be built from source (default) or use prebuilt libraries:
 
 ```cmake
 # Build from source (default)
 set(SDK_TFLM_FORCE_PREBUILT OFF)
+set(SDK_CMSIS_DSP_FORCE_PREBUILT OFF)
 set(SDK_CMSIS_NN_FORCE_PREBUILT OFF)
 
 # Use prebuilt
 set(SDK_TFLM_FORCE_PREBUILT ON)
+set(SDK_CMSIS_DSP_FORCE_PREBUILT ON)
 set(SDK_CMSIS_NN_FORCE_PREBUILT ON)
 ```
 
@@ -607,5 +687,54 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     interface
     common
     trustzone_cfg
+)
+```
+
+### CMSIS-DSP/NN Application
+
+**Example CMSIS-DSP Application (hello_world_cmsis_dsp):**
+```cmake
+# SDK configuration
+set(SDK_TRUSTZONE ON)
+set(SDK_TRUSTZONE_TYPE "security")
+set(SDK_TRUSTZONE_FW_TYPE 1)  # Security Only
+set(SDK_USE_FREERTOS OFF)
+set(SDK_EVT_DATAPATH ON)
+
+# Include modules
+include(${CMAKE_CURRENT_LIST_DIR}/cmsis_dsp.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/cmsis_nn.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/event_handler.cmake)
+
+# Create libraries
+sdk_add_cmsis_dsp_library(cmsis_dsp)
+sdk_add_cmsis_nn_library(cmsis_nn)
+sdk_add_event_handler_library(event_handler)
+
+# Application definitions
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+    HELLO_WORLD_CMSIS_DSP
+    TF_LITE_STATIC_MEMORY
+)
+
+# Link to application (use --start-group for circular dependencies)
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    cmsis_dsp
+    cmsis_nn
+    event_handler
+    -Wl,--start-group
+    board
+    device
+    interface
+    common
+    trustzone_cfg
+    cmsis_dsp
+    cmsis_nn
+    event_handler
+    ${SDK_LIB_DRIVER_PREBUILT}
+    ${SDK_LIB_PWRMGMT_PREBUILT}
+    ${SDK_LIB_SENSORDP_PREBUILT}
+    -lm -lc_nano -lgcc -lstdc++_nano
+    -Wl,--end-group
 )
 ```
