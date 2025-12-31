@@ -57,7 +57,9 @@ set(SDK_DRIVERS_IP_INSTANCE
     # UART instances
     UART0 UART1 UART2
     # I2C instances
-    IIC_HOST_SENSOR IIC_HOST IIC_HOST_MIPI IIC_SLAVE0 IIC_SLAVE1
+    IIC_HOST_SENSOR IIC_HOST IIC_HOST_MIPI
+    # I3C instances
+    IIIC_SLAVE0 IIIC_SLAVE1
     # SPI instances
     SSPI_HOST QSPI_HOST OSPI_HOST SSPI_SLAVE
     # GPIO instances (critical for platform_driver_init)
