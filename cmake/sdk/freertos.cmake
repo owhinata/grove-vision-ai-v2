@@ -3,6 +3,7 @@
 #
 # Configuration:
 #   SDK_USE_FREERTOS must be ON
+#   SDK_FREERTOS_VERSION = "freertos" (default) or "freertos_10_5_1"
 #   SDK_TRUSTZONE_FW_TYPE = 1 (Security Only) uses NTZ kernel with FREERTOS_SECONLY
 #
 # Depends on: device
@@ -15,30 +16,41 @@ endif()
 # Include dependencies
 include(${CMAKE_CURRENT_LIST_DIR}/device.cmake)
 
+# FreeRTOS version selection (default: freertos, can be freertos_10_5_1)
+set(SDK_FREERTOS_VERSION "freertos" CACHE STRING "FreeRTOS version")
+set_property(CACHE SDK_FREERTOS_VERSION PROPERTY STRINGS "freertos" "freertos_10_5_1")
+
 # FreeRTOS directories
-set(SDK_FREERTOS_ROOT ${SDK_ROOT}/os/freertos)
+set(SDK_FREERTOS_ROOT ${SDK_ROOT}/os/${SDK_FREERTOS_VERSION})
 
 # Determine FreeRTOS variant based on TrustZone configuration
 if(SDK_TRUSTZONE AND SDK_TRUSTZONE_FW_TYPE EQUAL 1)
     # TrustZone Security Only - use NTZ kernel with FREERTOS_SECONLY
     set(SDK_FREERTOS_VARIANT "NTZ")
     set(SDK_FREERTOS_PORT_DIR "ARM_CM55_NTZ/non_secure")
-    set(SDK_FREERTOS_DEFINES FREERTOS FREERTOS_SECONLY ENABLE_OS OS_FREERTOS configENABLE_MPU=0)
+    set(SDK_FREERTOS_DEFINES FREERTOS FREERTOS_SECONLY ENABLE_OS configENABLE_MPU=0)
 elseif(SDK_TRUSTZONE AND SDK_TRUSTZONE_TYPE STREQUAL "security")
     # TrustZone Secure side (S+NS) - use TZ_Sec (secure port only)
     set(SDK_FREERTOS_VARIANT "TZ_Sec")
     set(SDK_FREERTOS_PORT_DIR "ARM_CM55/secure")
-    set(SDK_FREERTOS_DEFINES FREERTOS FREERTOS_S ENABLE_OS OS_FREERTOS configENABLE_MPU=0)
+    set(SDK_FREERTOS_DEFINES FREERTOS FREERTOS_S ENABLE_OS configENABLE_MPU=0)
 elseif(SDK_TRUSTZONE AND SDK_TRUSTZONE_TYPE STREQUAL "non-security")
     # TrustZone Non-Secure side - use TZ_NonSec
     set(SDK_FREERTOS_VARIANT "TZ_NonSec")
     set(SDK_FREERTOS_PORT_DIR "ARM_CM55/non_secure")
-    set(SDK_FREERTOS_DEFINES FREERTOS FREERTOS_NS ENABLE_OS OS_FREERTOS configENABLE_MPU=0)
+    set(SDK_FREERTOS_DEFINES FREERTOS FREERTOS_NS ENABLE_OS configENABLE_MPU=0)
 else()
     # Non-TrustZone - use NTZ
     set(SDK_FREERTOS_VARIANT "NTZ")
     set(SDK_FREERTOS_PORT_DIR "ARM_CM55_NTZ/non_secure")
-    set(SDK_FREERTOS_DEFINES FREERTOS ENABLE_OS OS_FREERTOS configENABLE_MPU=0)
+    set(SDK_FREERTOS_DEFINES FREERTOS ENABLE_OS configENABLE_MPU=0)
+endif()
+
+# Add version-specific OS ID define
+if(SDK_FREERTOS_VERSION STREQUAL "freertos_10_5_1")
+    list(APPEND SDK_FREERTOS_DEFINES OS_FREERTOS_10_5_1)
+else()
+    list(APPEND SDK_FREERTOS_DEFINES OS_FREERTOS)
 endif()
 
 set(SDK_FREERTOS_KERNEL_DIR ${SDK_FREERTOS_ROOT}/${SDK_FREERTOS_VARIANT}/freertos_kernel)
@@ -48,6 +60,7 @@ set(SDK_FREERTOS_PORT_SRC_DIR ${SDK_FREERTOS_KERNEL_DIR}/portable/GCC/${SDK_FREE
 # FreeRTOS include directories
 set(SDK_FREERTOS_INCLUDE_DIRS
     ${SDK_FREERTOS_KERNEL_DIR}/include
+    ${SDK_FREERTOS_KERNEL_DIR}/portable
     ${SDK_FREERTOS_PORT_SRC_DIR}
     ${SDK_FREERTOS_CONFIG_DIR}
 )

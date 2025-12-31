@@ -59,7 +59,7 @@ endif()
 
 # FreeRTOS OS define (prevents device library from defining SysTick_Handler/SVC_Handler)
 if(SDK_USE_FREERTOS)
-    list(APPEND SDK_COMMON_DEFINITIONS ENABLE_OS)
+    list(APPEND SDK_COMMON_DEFINITIONS ENABLE_OS configENABLE_MPU=0)
 endif()
 
 # Cross-module include directories needed due to tight coupling in SDK code
@@ -99,6 +99,11 @@ endif()
 
 # FreeRTOS includes (needed by device/clib when SDK_USE_FREERTOS is ON)
 if(SDK_USE_FREERTOS)
+    # FreeRTOS version (default: freertos, can be freertos_10_5_1)
+    if(NOT DEFINED SDK_FREERTOS_VERSION)
+        set(SDK_FREERTOS_VERSION "freertos")
+    endif()
+
     # Determine FreeRTOS variant
     if(SDK_TRUSTZONE AND SDK_TRUSTZONE_FW_TYPE EQUAL 1)
         set(_FREERTOS_VARIANT "NTZ")
@@ -115,9 +120,9 @@ if(SDK_USE_FREERTOS)
     endif()
 
     list(APPEND SDK_CROSS_MODULE_INCLUDE_DIRS
-        ${SDK_ROOT}/os/freertos/${_FREERTOS_VARIANT}/freertos_kernel/include
-        ${SDK_ROOT}/os/freertos/${_FREERTOS_VARIANT}/freertos_kernel/portable/GCC/${_FREERTOS_PORT_DIR}
-        ${SDK_ROOT}/os/freertos/${_FREERTOS_VARIANT}/config
+        ${SDK_ROOT}/os/${SDK_FREERTOS_VERSION}/${_FREERTOS_VARIANT}/freertos_kernel/include
+        ${SDK_ROOT}/os/${SDK_FREERTOS_VERSION}/${_FREERTOS_VARIANT}/freertos_kernel/portable/GCC/${_FREERTOS_PORT_DIR}
+        ${SDK_ROOT}/os/${SDK_FREERTOS_VERSION}/${_FREERTOS_VARIANT}/config
     )
 endif()
 
