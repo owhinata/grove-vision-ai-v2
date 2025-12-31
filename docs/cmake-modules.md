@@ -7,17 +7,17 @@ This directory contains CMake modules for building applications with the Grove V
 The modules are organized in a hierarchical dependency structure:
 
 ```
-                         cmsis_core (INTERFACE)
-                              |
-              +---------------+---------------+
-              |               |               |
-       drivers_interface  cmsis_dsp       cmsis_nn
-        (INTERFACE)      (STATIC)        (STATIC)
-              |               |               |
-              +-------+-------+-------+-------+
-                      |
-                   device
-                      |
+                              cmsis_core (INTERFACE)
+                                     |
+              +----------+----------+----------+----------+
+              |          |          |          |          |
+       drivers_interface cmsis_dsp cmsis_nn cmsis_cv  jpegenc
+        (INTERFACE)     (STATIC)  (STATIC)  (STATIC)  (STATIC)
+              |          |          |          |          |
+              +----+-----+-----+----+----+-----+----+-----+
+                   |
+                device
+                   |
          +-------+-------+-------+-------+-------+
          |       |       |       |       |       |
        board  interface common trustzone freertos ...
@@ -378,6 +378,78 @@ target_link_libraries(my_app PRIVATE cmsis_nn)
 
 ---
 
+### cmsis_cv.cmake
+
+**Type:** Static library
+
+**Purpose:** CMSIS-CV (Computer Vision) library with MVE-optimized image processing functions.
+
+**Dependencies:** `cmsis_core`, `cmsis_dsp` (for math types)
+
+**PUBLIC Includes:**
+- `${SDK_ROOT}/library/cmsis_cv/CMSIS-CV`
+- `${SDK_ROOT}/library/cmsis_cv/CMSIS-CV/Include`
+- `${SDK_ROOT}/library/cmsis_cv/CMSIS-CV/Include/cv`
+- `${SDK_ROOT}/library/cmsis_cv/CMSIS-CV/PrivateInclude`
+
+**PUBLIC Definitions:**
+- `LIB_CMSIS_DSP` - Required for CMSIS-CV
+- `ARM_MATH_MVEI` - MVE intrinsics
+- `ARM_MATH_DSP` - DSP extensions
+- `ARM_MATH_LOOPUNROLL` - Loop unrolling optimization
+
+**Source Directories:**
+- Source (arm_cv_common.c)
+- Source/FeatureDetection (Canny, Sobel edge detection)
+- Source/LinearFilters (Gaussian filters)
+- Source/ColorTransforms (YUV, RGB, Gray conversions)
+- Source/ImageTransforms (Crop, Resize)
+
+**Function:**
+```cmake
+sdk_add_cmsis_cv_library(TARGET_NAME)
+```
+
+**Usage:**
+```cmake
+include(${CMAKE_CURRENT_LIST_DIR}/cmsis_cv.cmake)
+sdk_add_cmsis_cv_library(cmsis_cv)
+target_link_libraries(my_app PRIVATE cmsis_cv)
+```
+
+---
+
+### jpegenc.cmake
+
+**Type:** Static library
+
+**Purpose:** JPEG encoder library for image compression.
+
+**Dependencies:** `cmsis_core`
+
+**PUBLIC Includes:**
+- `${SDK_ROOT}/library/JPEGENC`
+
+**PUBLIC Definitions:**
+- `LIB_JPEGENC` - JPEG encoder enabled
+
+**Sources:**
+- JPEGENC.cpp
+
+**Function:**
+```cmake
+sdk_add_jpegenc_library(TARGET_NAME)
+```
+
+**Usage:**
+```cmake
+include(${CMAKE_CURRENT_LIST_DIR}/jpegenc.cmake)
+sdk_add_jpegenc_library(jpegenc)
+target_link_libraries(my_app PRIVATE jpegenc)
+```
+
+---
+
 ## Event Handler Modules
 
 ### event_handler.cmake
@@ -620,9 +692,14 @@ Application
     |                    |
     +-- cmsis_nn --------+
     |                    |
+    +-- cmsis_cv --------+-- cmsis_dsp (headers)
+    |                    |
+    +-- jpegenc ---------+
+    |                    |
     +-- tflm_lib --------+
     |
     +-- pwrmgmt (prebuilt)
+    +-- extdevice (prebuilt, for CIS sensors)
 ```
 
 ---
@@ -734,6 +811,75 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     ${SDK_LIB_DRIVER_PREBUILT}
     ${SDK_LIB_PWRMGMT_PREBUILT}
     ${SDK_LIB_SENSORDP_PREBUILT}
+    -lm -lc_nano -lgcc -lstdc++_nano
+    -Wl,--end-group
+)
+```
+
+### CMSIS-CV Application
+
+**Example Computer Vision Application (hello_world_cmsis_cv):**
+```cmake
+# SDK configuration
+set(SDK_TRUSTZONE ON)
+set(SDK_TRUSTZONE_TYPE "security")
+set(SDK_TRUSTZONE_FW_TYPE 1)  # Security Only
+set(SDK_USE_FREERTOS OFF)
+set(SDK_EVT_DATAPATH ON)
+
+# Camera sensor selection (options: cis_imx219, cis_imx477, cis_imx708, cis_ov5647, cis_hm0360)
+set(CIS_SENSOR_MODEL "cis_imx219" CACHE STRING "Camera sensor model")
+
+# Include modules
+include(${CMAKE_CURRENT_LIST_DIR}/cmsis_dsp.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/cmsis_nn.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/cmsis_cv.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/jpegenc.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/event_handler.cmake)
+
+# Create libraries
+sdk_add_cmsis_dsp_library(cmsis_dsp)
+sdk_add_cmsis_nn_library(cmsis_nn)
+sdk_add_cmsis_cv_library(cmsis_cv)
+sdk_add_jpegenc_library(jpegenc)
+sdk_add_event_handler_library(event_handler)
+
+# Application definitions
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+    HELLO_WORLD_CMSIS_CV
+    TF_LITE_STATIC_MEMORY
+    HM_COMMON
+)
+
+# Include camera sensor directory
+target_include_directories(${PROJECT_NAME} PRIVATE
+    ${SDK_ROOT}/external
+    ${SDK_ROOT}/external/cis
+    ${SDK_ROOT}/external/cis/hm_common
+)
+
+# Link to application (use --start-group for circular dependencies)
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    cmsis_dsp
+    cmsis_nn
+    cmsis_cv
+    jpegenc
+    event_handler
+    -Wl,--start-group
+    board
+    device
+    interface
+    common
+    trustzone_cfg
+    cmsis_dsp
+    cmsis_nn
+    cmsis_cv
+    jpegenc
+    event_handler
+    ${SDK_LIB_DRIVER_PREBUILT}
+    ${SDK_LIB_PWRMGMT_PREBUILT}
+    ${SDK_LIB_SENSORDP_PREBUILT}
+    ${SDK_ROOT}/prebuilt_libs/gnu/libextdevice.a
     -lm -lc_nano -lgcc -lstdc++_nano
     -Wl,--end-group
 )
