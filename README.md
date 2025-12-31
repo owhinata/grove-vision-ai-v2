@@ -1,10 +1,12 @@
 # Grove Vision AI V2 - CMake Build System
 
-Seeed Grove Vision AI Module V2のCMakeビルドシステムです。
+CMake build system for Seeed Grove Vision AI Module V2.
 
-## 必要条件
+[日本語版はこちら](README_ja.md)
 
-- CMake 3.16以上
+## Requirements
+
+- CMake 3.16 or later
 - Python 3.x
 - Git
 
@@ -23,140 +25,217 @@ sudo apt-get install cmake build-essential python3 python3-venv git
 
 ### Windows
 
-- [CMake](https://cmake.org/download/) をインストール
-- [Python](https://www.python.org/downloads/) をインストール
-- Git for Windows をインストール
+- Install [CMake](https://cmake.org/download/)
+- Install [Python](https://www.python.org/downloads/)
+- Install Git for Windows
 
-## クイックスタート
+## Quick Start
 
-### 1. リポジトリのクローン
+### 1. Clone Repository
 
 ```bash
 git clone --recursive https://github.com/yourusername/grove-vision-ai-v2.git
 cd grove-vision-ai-v2
 ```
 
-### 2. ビルド
+### 2. Build
 
 ```bash
-# ビルドディレクトリの作成と設定
+# Configure build directory
 cmake -B build -S apps/hello_world
 
-# ファームウェアのビルド（.img も自動生成）
+# Build firmware (.img is auto-generated)
 cmake --build build
 ```
 
-初回実行時に以下が自動的にセットアップされます：
-- Git サブモジュールの初期化
-- ARM ツールチェーンのダウンロード
-- Python 仮想環境の作成
+On first run, the following are automatically set up:
+- Git submodule initialization
+- ARM toolchain download
+- Python virtual environment creation
 
-### 3. デバイスへの書き込み
+### 3. Flash to Device
 
 ```bash
 cmake --build build --target flash
 ```
 
-デフォルトのシリアルポートは `/dev/ttyACM0` です。変更する場合：
+Default serial port is `/dev/ttyACM0`. To change:
 
 ```bash
 cmake -B build -S apps/hello_world -DGROVE_SERIAL_PORT=/dev/ttyUSB0
 cmake --build build --target flash
 ```
 
-## CMakeオプション
+## Available Applications
 
-| オプション | デフォルト | 説明 |
-|-----------|----------|------|
-| `GROVE_SERIAL_PORT` | `/dev/ttyACM0` | 書き込み用シリアルポート |
-| `GROVE_SERIAL_BAUDRATE` | `921600` | シリアルボーレート |
+| Application | Description |
+|-------------|-------------|
+| `hello_world` | Basic hello world example |
+| `hello_world_freertos` | FreeRTOS hello world example |
+| `hello_world_cmsis_dsp` | CMSIS-DSP hello world example |
+| `hello_world_cmsis_cv` | CMSIS-CV (Helium) computer vision example |
+| `allon_sensor_tflm` | Camera sensor with TensorFlow Lite Micro |
+| `allon_sensor_tflm_freertos` | Camera sensor with TFLM and FreeRTOS |
+| `allon_sensor_tflm_fatfs` | Camera sensor with TFLM and FatFS (SD card) |
+| `allon_sensor_tflm_cmsis_nn` | Camera sensor with TFLM and CMSIS-NN |
+| `allon_jpeg_encode` | JPEG encoding with SPI output |
+| `tflm_yolo11_od` | YOLO11 object detection with model flash |
+| `tflm_yolov8_pose` | YOLOv8 pose estimation with model flash |
 
-## ビルドターゲット
+### Building an Application
 
-| ターゲット | 説明 |
-|-----------|------|
-| `all` | ファームウェアをビルド（.elf, .bin, .img を生成） |
-| `flash` | デバイスに書き込み |
+```bash
+cmake -B build -S apps/<app_name>
+cmake --build build
+cmake --build build --target flash
+```
 
-## ディレクトリ構造
+### Applications with Model Flash Support
+
+`tflm_yolo11_od` and `tflm_yolov8_pose` require model flashing:
+
+```bash
+# Flash firmware and model together
+cmake --build build --target flash
+
+# Flash model only
+cmake --build build --target flash-model
+```
+
+## CMake Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `GROVE_SERIAL_PORT` | `/dev/ttyACM0` | Serial port for flashing |
+| `GROVE_SERIAL_BAUDRATE` | `921600` | Serial baudrate |
+| `CIS_SENSOR_MODEL` | (app dependent) | Camera sensor model |
+| `SDK_TFLM_VERSION` | (app dependent) | TFLM library version |
+| `SDK_TFLM_FORCE_PREBUILT` | `OFF` | Use prebuilt TFLM library |
+| `SDK_CMSIS_NN_FORCE_PREBUILT` | `OFF` | Use prebuilt CMSIS-NN library |
+
+### Camera Sensor Options
+
+```bash
+cmake -B build -S apps/allon_sensor_tflm -DCIS_SENSOR_MODEL=cis_ov5647
+```
+
+Available sensors: `cis_hm0360`, `cis_ov5647`, `cis_imx219`, `cis_imx477`, `cis_imx708`
+
+### TFLM Version Options
+
+```bash
+cmake -B build -S apps/allon_sensor_tflm -DSDK_TFLM_VERSION=tflmtag2209_u55tag2205
+```
+
+Available versions:
+- `tflmtag2209_u55tag2205` - Sep 2022 TFLM + May 2022 U55
+- `tflmtag2212_u55tag2205` - Dec 2022 TFLM + May 2022 U55
+- `tflmtag2412_u55tag2411` - Dec 2024 TFLM + Nov 2024 U55 (latest)
+
+## Build Targets
+
+| Target | Description |
+|--------|-------------|
+| `all` | Build firmware (.elf, .bin, .img) |
+| `flash` | Flash firmware to device |
+| `flash-model` | Flash model only (YOLO apps) |
+
+## Directory Structure
 
 ```
 grove-vision-ai-v2/
 ├── README.md
+├── README_ja.md
 ├── apps/
-│   └── hello_world/          # サンプルアプリケーション
-│       ├── CMakeLists.txt
-│       └── main.c
+│   ├── hello_world/              # Basic example
+│   ├── hello_world_freertos/     # FreeRTOS example
+│   ├── hello_world_cmsis_dsp/    # CMSIS-DSP example
+│   ├── hello_world_cmsis_cv/     # CMSIS-CV example
+│   ├── allon_sensor_tflm/        # Camera + TFLM
+│   ├── allon_sensor_tflm_freertos/  # Camera + TFLM + FreeRTOS
+│   ├── allon_sensor_tflm_fatfs/  # Camera + TFLM + FatFS
+│   ├── allon_sensor_tflm_cmsis_nn/  # Camera + TFLM + CMSIS-NN
+│   ├── allon_jpeg_encode/        # JPEG encoding
+│   ├── tflm_yolo11_od/           # YOLO11 object detection
+│   └── tflm_yolov8_pose/         # YOLOv8 pose estimation
 ├── cmake/
-│   ├── setup.cmake           # 開発環境セットアップ
-│   ├── arm-none-eabi-gcc.cmake  # ツールチェーンファイル
+│   ├── setup.cmake               # Development environment setup
+│   ├── arm-none-eabi-gcc.cmake   # Toolchain file
 │   └── sdk/
-│       ├── sdk_base.cmake    # SDK基本設定
-│       ├── device.cmake      # デバイスライブラリ
-│       ├── board.cmake       # ボードライブラリ
-│       ├── interface.cmake   # インターフェースライブラリ
-│       ├── prebuilt_libs.cmake  # プリビルトライブラリ
-│       ├── linker.cmake      # リンカー設定
-│       ├── image.cmake       # イメージ生成
-│       └── flash.cmake       # 書き込み設定
+│       ├── device.cmake          # Device library
+│       ├── board.cmake           # Board library
+│       ├── interface.cmake       # Interface library
+│       ├── common.cmake          # Common library
+│       ├── trustzone.cmake       # TrustZone configuration
+│       ├── library.cmake         # SDK libraries
+│       ├── tflm.cmake            # TensorFlow Lite Micro
+│       ├── cmsis_nn.cmake        # CMSIS-NN library
+│       ├── cmsis_dsp.cmake       # CMSIS-DSP library
+│       ├── cmsis_cv.cmake        # CMSIS-CV library
+│       ├── freertos.cmake        # FreeRTOS support
+│       ├── fatfs.cmake           # FatFS support
+│       ├── event_handler.cmake   # Event handler
+│       ├── linker.cmake          # Linker settings
+│       ├── image.cmake           # Image generation
+│       └── flash.cmake           # Flash settings
 ├── scripts/
-│   ├── download_toolchain.sh    # ツールチェーンダウンロード (Linux/macOS)
-│   └── download_toolchain.ps1   # ツールチェーンダウンロード (Windows)
+│   ├── download_toolchain.sh     # Toolchain download (Linux/macOS)
+│   └── download_toolchain.ps1    # Toolchain download (Windows)
 ├── external/
-│   └── sdk/                  # Seeed Grove Vision AI Module V2 サブモジュール
-├── toolchain/                # ダウンロードされたツールチェーン
-└── .venv/                    # Python仮想環境
+│   └── sdk/                      # Seeed SDK submodule
+├── toolchain/                    # Downloaded toolchain
+└── .venv/                        # Python virtual environment
 ```
 
-## 新しいアプリケーションの作成
+## Creating a New Application
 
-`apps/hello_world/` をテンプレートとして使用できます：
+Use `apps/hello_world/` as a template:
 
 ```bash
 cp -r apps/hello_world apps/my_app
 ```
 
-`apps/my_app/CMakeLists.txt` の `project()` 名を変更してビルド：
+Edit `apps/my_app/CMakeLists.txt` to change the `project()` name and build:
 
 ```bash
 cmake -B build -S apps/my_app
 cmake --build build
 ```
 
-## トラブルシューティング
+## Troubleshooting
 
-### サブモジュールが見つからない
+### Submodule Not Found
 
-CMakeが自動的に初期化しますが、手動で実行する場合：
+CMake auto-initializes, but for manual initialization:
 
 ```bash
 git submodule update --init --recursive
 ```
 
-### ツールチェーンが見つからない
+### Toolchain Not Found
 
-CMakeが自動的にダウンロードしますが、手動で実行する場合：
+CMake auto-downloads, but for manual download:
 
 ```bash
 ./scripts/download_toolchain.sh
 ```
 
-### Python パッケージのインストールエラー
+### Python Package Installation Error
 
 ```bash
-# 仮想環境を再作成
+# Recreate virtual environment
 rm -rf .venv
-cmake -B build -S apps/hello_world  # 自動的に再作成されます
+cmake -B build -S apps/hello_world  # Auto-recreates
 ```
 
-### シリアルポートのアクセス権限エラー (Linux)
+### Serial Port Permission Error (Linux)
 
 ```bash
 sudo usermod -a -G dialout $USER
-# ログアウトして再ログイン
+# Logout and login again
 ```
 
-## ライセンス
+## License
 
-このプロジェクトのビルドシステムはMITライセンスで提供されています。
-Seeed Grove Vision AI Module V2のソースコードは元のリポジトリのライセンスに従います。
+The build system of this project is provided under the MIT License.
+The Seeed Grove Vision AI Module V2 source code follows the original repository's license.
