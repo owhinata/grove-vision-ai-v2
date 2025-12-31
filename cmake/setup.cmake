@@ -206,6 +206,66 @@ function(grove_setup_venv)
 endfunction()
 
 # =============================================================================
+# 4. Himax AI Web Toolkit Download
+# =============================================================================
+set(GROVE_WEB_TOOLKIT_URL "https://github.com/HimaxWiseEyePlus/Seeed_Grove_Vision_AI_Module_V2/releases/download/v1.1/Himax_AI_web_toolkit.zip")
+set(GROVE_WEB_TOOLKIT_DIR "${GROVE_ROOT_DIR}/Himax_AI_web_toolkit")
+set(GROVE_WEB_TOOLKIT_ZIP "${GROVE_ROOT_DIR}/Himax_AI_web_toolkit.zip")
+
+function(grove_setup_web_toolkit)
+    # Check if web toolkit already exists
+    if(EXISTS "${GROVE_WEB_TOOLKIT_DIR}/index.html")
+        message(STATUS "Himax AI web toolkit found: ${GROVE_WEB_TOOLKIT_DIR}")
+        return()
+    endif()
+
+    message(STATUS "Downloading Himax AI web toolkit...")
+
+    # Download the zip file
+    file(DOWNLOAD
+        "${GROVE_WEB_TOOLKIT_URL}"
+        "${GROVE_WEB_TOOLKIT_ZIP}"
+        STATUS DOWNLOAD_STATUS
+        SHOW_PROGRESS
+    )
+
+    list(GET DOWNLOAD_STATUS 0 DOWNLOAD_RESULT)
+    if(NOT DOWNLOAD_RESULT EQUAL 0)
+        list(GET DOWNLOAD_STATUS 1 DOWNLOAD_ERROR)
+        message(WARNING "Failed to download Himax AI web toolkit: ${DOWNLOAD_ERROR}")
+        return()
+    endif()
+
+    message(STATUS "Extracting Himax AI web toolkit...")
+
+    # Extract the zip file
+    if(GROVE_PLATFORM STREQUAL "windows")
+        execute_process(
+            COMMAND powershell -Command "Expand-Archive -Path '${GROVE_WEB_TOOLKIT_ZIP}' -DestinationPath '${GROVE_ROOT_DIR}' -Force"
+            WORKING_DIRECTORY ${GROVE_ROOT_DIR}
+            RESULT_VARIABLE EXTRACT_RESULT
+        )
+    else()
+        execute_process(
+            COMMAND unzip -o "${GROVE_WEB_TOOLKIT_ZIP}" -d "${GROVE_ROOT_DIR}"
+            WORKING_DIRECTORY ${GROVE_ROOT_DIR}
+            RESULT_VARIABLE EXTRACT_RESULT
+            OUTPUT_QUIET
+        )
+    endif()
+
+    if(NOT EXTRACT_RESULT EQUAL 0)
+        message(WARNING "Failed to extract Himax AI web toolkit")
+        return()
+    endif()
+
+    # Remove the zip file after extraction
+    file(REMOVE "${GROVE_WEB_TOOLKIT_ZIP}")
+
+    message(STATUS "Himax AI web toolkit installed: ${GROVE_WEB_TOOLKIT_DIR}")
+endfunction()
+
+# =============================================================================
 # Run All Setup Steps
 # =============================================================================
 function(grove_setup_all)
@@ -218,6 +278,7 @@ function(grove_setup_all)
     grove_setup_submodules()
     grove_setup_toolchain()
     grove_setup_venv()
+    grove_setup_web_toolkit()
 
     message(STATUS "")
     message(STATUS "Setup complete!")

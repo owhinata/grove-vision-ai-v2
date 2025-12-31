@@ -22,6 +22,10 @@ toolchain/
 # Output
 output/
 
+# Himax AI Web Toolkit (downloaded separately)
+Himax_AI_web_toolkit/
+Himax_AI_web_toolkit.zip
+
 # Python virtual environment
 .venv/
 venv/
@@ -31,6 +35,7 @@ __pycache__/
 # IDE
 .idea/
 .vscode/
+.cache/
 *.swp
 *.swo
 *~
