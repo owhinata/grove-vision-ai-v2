@@ -57,6 +57,11 @@ if(SDK_SEMIHOST)
     list(APPEND SDK_COMMON_DEFINITIONS SEMIHOST)
 endif()
 
+# FreeRTOS OS define (prevents device library from defining SysTick_Handler/SVC_Handler)
+if(SDK_USE_FREERTOS)
+    list(APPEND SDK_COMMON_DEFINITIONS ENABLE_OS)
+endif()
+
 # Cross-module include directories needed due to tight coupling in SDK code
 # (e.g., device sources include board.h, board sources include timer_interface.h,
 #  ethosu_driver.c includes WE2_core.h, xprintf.c includes WE2_device.h)
@@ -89,6 +94,30 @@ if(SDK_TRUSTZONE AND SDK_TRUSTZONE_TYPE STREQUAL "security")
     list(APPEND SDK_CROSS_MODULE_INCLUDE_DIRS
         ${SDK_ROOT}/drivers/seconly_inc
         ${SDK_ROOT}/trustzone/tz_cfg
+    )
+endif()
+
+# FreeRTOS includes (needed by device/clib when SDK_USE_FREERTOS is ON)
+if(SDK_USE_FREERTOS)
+    # Determine FreeRTOS variant
+    if(SDK_TRUSTZONE AND SDK_TRUSTZONE_FW_TYPE EQUAL 1)
+        set(_FREERTOS_VARIANT "NTZ")
+        set(_FREERTOS_PORT_DIR "ARM_CM55_NTZ/non_secure")
+    elseif(SDK_TRUSTZONE AND SDK_TRUSTZONE_TYPE STREQUAL "security")
+        set(_FREERTOS_VARIANT "TZ_Sec")
+        set(_FREERTOS_PORT_DIR "ARM_CM55/secure")
+    elseif(SDK_TRUSTZONE AND SDK_TRUSTZONE_TYPE STREQUAL "non-security")
+        set(_FREERTOS_VARIANT "TZ_NonSec")
+        set(_FREERTOS_PORT_DIR "ARM_CM55/non_secure")
+    else()
+        set(_FREERTOS_VARIANT "NTZ")
+        set(_FREERTOS_PORT_DIR "ARM_CM55_NTZ/non_secure")
+    endif()
+
+    list(APPEND SDK_CROSS_MODULE_INCLUDE_DIRS
+        ${SDK_ROOT}/os/freertos/${_FREERTOS_VARIANT}/freertos_kernel/include
+        ${SDK_ROOT}/os/freertos/${_FREERTOS_VARIANT}/freertos_kernel/portable/GCC/${_FREERTOS_PORT_DIR}
+        ${SDK_ROOT}/os/freertos/${_FREERTOS_VARIANT}/config
     )
 endif()
 
