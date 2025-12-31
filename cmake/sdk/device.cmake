@@ -1,18 +1,39 @@
 # Device module for Grove Vision AI V2 SDK
 # Provides core device initialization and startup code
+#
+# This module creates a library with PUBLIC includes/defines that
+# automatically propagate to any target that links against it.
 
 # Ensure SDK_ROOT is defined
 if(NOT DEFINED SDK_ROOT)
     message(FATAL_ERROR "SDK_ROOT must be defined before including device.cmake")
 endif()
 
-# Include base SDK configuration if not already included
+# Include dependencies
+include(${CMAKE_CURRENT_LIST_DIR}/cmsis_core.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/drivers.cmake)
+
+# Include base SDK configuration for options (temporary, will be minimized)
 if(NOT DEFINED SDK_COMMON_INCLUDE_DIRS)
     include(${CMAKE_CURRENT_LIST_DIR}/sdk_base.cmake)
 endif()
 
 # Device source directory
 set(SDK_DEVICE_DIR ${SDK_ROOT}/device)
+
+# Device include directories (PUBLIC - propagate to dependents)
+set(SDK_DEVICE_INCLUDE_DIRS
+    ${SDK_DEVICE_DIR}
+    ${SDK_DEVICE_DIR}/inc
+    ${SDK_DEVICE_DIR}/clib
+)
+
+# Device compile definitions (PUBLIC - propagate to dependents)
+set(SDK_DEVICE_DEFINITIONS
+    IC_VERSION=${SDK_IC_VER}
+    IC_PACKAGE_${SDK_IC_PACKAGE}
+    COREV_0P9V
+)
 
 # Device sources (always included)
 set(SDK_DEVICE_SOURCES
@@ -44,20 +65,23 @@ if(NOT SDK_SEMIHOST)
     endif()
 endif()
 
-# Device-specific include directories (in addition to SDK common includes)
-set(SDK_DEVICE_INCLUDE_DIRS
-    ${SDK_DEVICE_DIR}
-    ${SDK_DEVICE_DIR}/inc
-    ${SDK_DEVICE_DIR}/clib
-)
-
 # Create device library target
 function(sdk_add_device_library TARGET_NAME)
     add_library(${TARGET_NAME} STATIC ${SDK_DEVICE_SOURCES})
 
-    # Apply SDK common settings
+    # Apply SDK common settings (temporary - will be removed as we modularize)
     sdk_apply_common_settings(${TARGET_NAME})
 
-    # Add device-specific include directories
-    target_include_directories(${TARGET_NAME} PUBLIC ${SDK_DEVICE_INCLUDE_DIRS})
+    # Link against dependencies (inherits includes and defines)
+    target_link_libraries(${TARGET_NAME} PUBLIC cmsis_core drivers_interface)
+
+    # Device-specific includes (PUBLIC - propagate to dependents)
+    target_include_directories(${TARGET_NAME} PUBLIC
+        ${SDK_DEVICE_INCLUDE_DIRS}
+    )
+
+    # Device-specific defines (PUBLIC - propagate to dependents)
+    target_compile_definitions(${TARGET_NAME} PUBLIC
+        ${SDK_DEVICE_DEFINITIONS}
+    )
 endfunction()

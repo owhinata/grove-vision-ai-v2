@@ -14,10 +14,8 @@ if(NOT DEFINED SDK_ROOT)
     message(FATAL_ERROR "SDK_ROOT must be defined before including trustzone.cmake")
 endif()
 
-# Include base SDK configuration if not already included
-if(NOT DEFINED SDK_COMMON_INCLUDE_DIRS)
-    include(${CMAKE_CURRENT_LIST_DIR}/sdk_base.cmake)
-endif()
+# Include dependencies
+include(${CMAKE_CURRENT_LIST_DIR}/device.cmake)
 
 # TrustZone directories
 set(SDK_TRUSTZONE_DIR ${SDK_ROOT}/trustzone)
@@ -40,18 +38,51 @@ set(SDK_TRUSTZONE_CFG_INCLUDE_DIRS
     ${SDK_TRUSTZONE_DIR}
 )
 
+# TrustZone compile definitions (PUBLIC - propagate to dependents)
+set(SDK_TRUSTZONE_DEFINITIONS
+    TRUSTZONE
+)
+if(SDK_TRUSTZONE_TYPE STREQUAL "security")
+    list(APPEND SDK_TRUSTZONE_DEFINITIONS TRUSTZONE_SEC)
+    if(SDK_TRUSTZONE_FW_TYPE EQUAL 1)
+        list(APPEND SDK_TRUSTZONE_DEFINITIONS TRUSTZONE_SEC_ONLY)
+    endif()
+else()
+    list(APPEND SDK_TRUSTZONE_DEFINITIONS TRUSTZONE_NS)
+endif()
+
+# TrustZone compile options (PUBLIC - propagate to dependents)
+set(SDK_TRUSTZONE_COMPILE_OPTIONS "")
+if(SDK_TRUSTZONE_TYPE STREQUAL "security")
+    # -mcmse enables Cortex-M Security Extensions
+    list(APPEND SDK_TRUSTZONE_COMPILE_OPTIONS -mcmse)
+endif()
+
 # Function to create TrustZone configuration library
 function(sdk_add_trustzone_cfg_library TARGET_NAME)
     add_library(${TARGET_NAME} STATIC ${SDK_TRUSTZONE_CFG_SOURCES})
 
-    # Apply SDK common settings
+    # Apply SDK common settings (temporary - will be removed as we modularize)
     sdk_apply_common_settings(${TARGET_NAME})
 
-    # Add TrustZone specific include directories
-    target_include_directories(${TARGET_NAME} PUBLIC ${SDK_TRUSTZONE_CFG_INCLUDE_DIRS})
+    # Link against device (inherits includes and defines)
+    target_link_libraries(${TARGET_NAME} PUBLIC device)
 
-    # Add TrustZone specific definitions (from tz_cfg.mk line 38)
-    target_compile_definitions(${TARGET_NAME} PRIVATE TRUSTZONE_CFG)
+    # TrustZone-specific includes (PUBLIC - propagate to dependents)
+    target_include_directories(${TARGET_NAME} PUBLIC
+        ${SDK_TRUSTZONE_CFG_INCLUDE_DIRS}
+    )
+
+    # TrustZone-specific definitions (PUBLIC - propagate to dependents)
+    target_compile_definitions(${TARGET_NAME} PUBLIC
+        ${SDK_TRUSTZONE_DEFINITIONS}
+        TRUSTZONE_CFG
+    )
+
+    # TrustZone-specific compile options (PUBLIC - propagate to dependents)
+    if(SDK_TRUSTZONE_COMPILE_OPTIONS)
+        target_compile_options(${TARGET_NAME} PUBLIC ${SDK_TRUSTZONE_COMPILE_OPTIONS})
+    endif()
 endfunction()
 
 # =============================================================================

@@ -1,15 +1,15 @@
 # Event Handler library for Grove Vision AI V2 SDK
 # Provides event-driven framework for sensor and peripheral handling
+#
+# Depends on: device
 
 # Ensure SDK_ROOT is defined
 if(NOT DEFINED SDK_ROOT)
     message(FATAL_ERROR "SDK_ROOT must be defined before including event_handler.cmake")
 endif()
 
-# Include base SDK configuration if not already included
-if(NOT DEFINED SDK_COMMON_INCLUDE_DIRS)
-    include(${CMAKE_CURRENT_LIST_DIR}/sdk_base.cmake)
-endif()
+# Include dependencies
+include(${CMAKE_CURRENT_LIST_DIR}/device.cmake)
 
 # Event handler source directory
 set(SDK_EVENT_HANDLER_DIR ${SDK_ROOT}/app/scenario_app/event_handler)
@@ -104,10 +104,13 @@ function(sdk_add_event_handler_library TARGET_NAME)
     # Create static library
     add_library(${TARGET_NAME} STATIC ${EVENT_HANDLER_SOURCES})
 
-    # Apply SDK common settings
+    # Apply SDK common settings (temporary - will be removed as we modularize)
     sdk_apply_common_settings(${TARGET_NAME})
 
-    # Add include directories
+    # Link against device (inherits includes and defines)
+    target_link_libraries(${TARGET_NAME} PUBLIC device)
+
+    # Event handler includes (PUBLIC - propagate to dependents)
     target_include_directories(${TARGET_NAME} PUBLIC
         ${EVENT_HANDLER_INCLUDES}
         ${SDK_ROOT}/library/hxevent
@@ -116,7 +119,7 @@ function(sdk_add_event_handler_library TARGET_NAME)
         ${SDK_ROOT}/library/pwrmgmt/seconly_inc
     )
 
-    # Add compile definitions
+    # Event handler definitions (PUBLIC - propagate to dependents)
     foreach(DEF ${EVENT_HANDLER_DEFINES})
         target_compile_definitions(${TARGET_NAME} PUBLIC ${DEF})
     endforeach()

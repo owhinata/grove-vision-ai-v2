@@ -3,16 +3,16 @@
 #
 # This module can build CMSIS-NN from source or use prebuilt library.
 # Set SDK_CMSIS_NN_FORCE_PREBUILT=ON to use prebuilt (default: OFF = build from source)
+#
+# Depends on: cmsis_core (for CMSIS headers and MVE intrinsics)
 
 # Ensure SDK_ROOT is defined
 if(NOT DEFINED SDK_ROOT)
     message(FATAL_ERROR "SDK_ROOT must be defined before including cmsis_nn.cmake")
 endif()
 
-# Include base SDK configuration if not already included
-if(NOT DEFINED SDK_COMMON_INCLUDE_DIRS)
-    include(${CMAKE_CURRENT_LIST_DIR}/sdk_base.cmake)
-endif()
+# Include dependencies
+include(${CMAKE_CURRENT_LIST_DIR}/cmsis_core.cmake)
 
 # Configuration options
 option(SDK_CMSIS_NN_FORCE_PREBUILT "Use prebuilt CMSIS-NN library instead of building from source" OFF)
@@ -24,14 +24,11 @@ set(SDK_CMSIS_NN_ROOT ${SDK_ROOT}/library/cmsis_nn/cmsis_nn_${SDK_CMSIS_NN_VERSI
 set(SDK_CMSIS_NN_PREBUILT ${SDK_ROOT}/prebuilt_libs/gnu/lib_cmsis_nn_${SDK_CMSIS_NN_VERSION}.a)
 
 # Include directories (from cmsis_nn_7_0_0.mk lines 29-30)
-# Note: CMSIS core headers are required for ARM_MATH_MVEI and MVE intrinsics
+# Note: CMSIS core headers come from cmsis_core via target_link_libraries
 set(SDK_CMSIS_NN_INCLUDE_DIRS
     ${SDK_CMSIS_NN_ROOT}
     ${SDK_CMSIS_NN_ROOT}/Include
     ${SDK_CMSIS_NN_ROOT}/Include/Internal
-    # CMSIS core headers (required for core_cm55.h, MVE intrinsics)
-    ${SDK_ROOT}/CMSIS
-    ${SDK_ROOT}/CMSIS/Driver/Include
 )
 
 # Source subdirectories (from cmsis_nn_7_0_0.mk lines 11-23)
@@ -65,10 +62,18 @@ function(sdk_add_cmsis_nn_library TARGET_NAME)
     if(SDK_CMSIS_NN_FORCE_PREBUILT)
         # Use prebuilt library
         add_library(${TARGET_NAME} INTERFACE)
+
+        # Link against cmsis_core (inherits CMSIS includes and defines)
+        target_link_libraries(${TARGET_NAME} INTERFACE cmsis_core)
+
+        # CMSIS-NN includes (INTERFACE - propagate to dependents)
         target_include_directories(${TARGET_NAME} INTERFACE ${SDK_CMSIS_NN_INCLUDE_DIRS})
+
+        # CMSIS-NN definitions (INTERFACE - propagate to dependents)
         foreach(DEF ${SDK_CMSIS_NN_DEFINITIONS})
             target_compile_definitions(${TARGET_NAME} INTERFACE ${DEF})
         endforeach()
+
         # Note: Prebuilt library should be linked directly in --start-group block
         message(STATUS "CMSIS-NN: Using prebuilt library")
     else()
@@ -83,13 +88,16 @@ function(sdk_add_cmsis_nn_library TARGET_NAME)
         # Create static library
         add_library(${TARGET_NAME} STATIC ${CMSIS_NN_SOURCES})
 
-        # Apply SDK common settings
+        # Apply SDK common settings (temporary - will be removed as we modularize)
         sdk_apply_common_settings(${TARGET_NAME})
 
-        # Add include directories
+        # Link against cmsis_core (inherits CMSIS includes and defines)
+        target_link_libraries(${TARGET_NAME} PUBLIC cmsis_core)
+
+        # CMSIS-NN includes (PUBLIC - propagate to dependents)
         target_include_directories(${TARGET_NAME} PUBLIC ${SDK_CMSIS_NN_INCLUDE_DIRS})
 
-        # Add compile definitions
+        # CMSIS-NN definitions (PUBLIC - propagate to dependents)
         foreach(DEF ${SDK_CMSIS_NN_DEFINITIONS})
             target_compile_definitions(${TARGET_NAME} PUBLIC ${DEF})
         endforeach()

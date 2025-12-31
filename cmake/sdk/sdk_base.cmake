@@ -1,12 +1,24 @@
 # SDK Base Configuration for Grove Vision AI V2
-# Sets up common paths, definitions, and include directories
+# Sets up common SDK options and provides temporary compatibility layer
+#
+# This file is being minimized as includes/defines move to individual modules:
+# - cmsis_core.cmake: CMSIS headers, __GNU__, __NEWLIB__, ARMCM55, CM55_BIG
+# - device.cmake: device includes, IC_VERSION, IC_PACKAGE, COREV_0P9V
+# - board.cmake: board includes, seeed, EPII_EVB, customer includes
+# - drivers.cmake: driver includes, IP_*, IP_INST_*
+# - interface.cmake: interface includes
+# - common.cmake: common library includes
+# - trustzone.cmake: TrustZone includes/defines, -mcmse
 
 # SDK root directory (should be set before including this file)
 if(NOT DEFINED SDK_ROOT)
     message(FATAL_ERROR "SDK_ROOT must be defined before including sdk_base.cmake")
 endif()
 
-# SDK configuration options with defaults
+# =============================================================================
+# SDK configuration options (cache variables used by modules)
+# =============================================================================
+
 set(SDK_BOARD "epii_evb" CACHE STRING "Board type")
 set(SDK_IC_VER "30" CACHE STRING "IC version")
 set(SDK_BD_VER "10" CACHE STRING "Board version")
@@ -24,108 +36,64 @@ option(SDK_DEBUG "Debug build" ON)
 # IC package type
 set(SDK_IC_PACKAGE "WLCSP65" CACHE STRING "IC package type")
 
-# Common definitions
-set(SDK_COMMON_DEFINITIONS
-    __GNU__
-    __NEWLIB__
-    ARMCM${SDK_CORTEX_M}
-    CM55_BIG
-    IC_VERSION=${SDK_IC_VER}
-    IC_PACKAGE_${SDK_IC_PACKAGE}
-    COREV_0P9V
-    seeed
-    EPII_EVB
-)
+# =============================================================================
+# Temporary compatibility - sdk_apply_common_settings()
+# This function provides remaining settings not yet in individual modules.
+# It will be removed once all modules are fully modularized.
+# =============================================================================
 
+# SDK_COMMON_INCLUDE_DIRS - still used by linker.cmake for linker script preprocessing
+# Set after SDK_CROSS_MODULE_INCLUDE_DIRS is defined below
+
+# Minimal common definitions (DEBUG/NDEBUG only - everything else is in modules)
+set(SDK_COMMON_DEFINITIONS "")
 if(SDK_DEBUG)
     list(APPEND SDK_COMMON_DEFINITIONS DEBUG)
 else()
     list(APPEND SDK_COMMON_DEFINITIONS NDEBUG)
 endif()
 
-if(SDK_TRUSTZONE)
-    list(APPEND SDK_COMMON_DEFINITIONS TRUSTZONE TRUSTZONE_CFG)
-    if(SDK_TRUSTZONE_TYPE STREQUAL "security")
-        list(APPEND SDK_COMMON_DEFINITIONS TRUSTZONE_SEC)
-        if(SDK_TRUSTZONE_FW_TYPE EQUAL 1)
-            list(APPEND SDK_COMMON_DEFINITIONS TRUSTZONE_SEC_ONLY)
-        endif()
-    else()
-        list(APPEND SDK_COMMON_DEFINITIONS TRUSTZONE_NS)
-    endif()
-endif()
-
 if(SDK_SEMIHOST)
     list(APPEND SDK_COMMON_DEFINITIONS SEMIHOST)
 endif()
 
-# Driver IP definitions (required for peripheral access)
-# These correspond to DRIVERS_IP_LIST in the SDK makefile
-set(SDK_DRIVERS_IP_LIST
-    scu uart spi i3c_mst isp iic mb timer watchdog rtc
-    cdm edm jpeg xdma dp inp tpg inp1bitparser sensorctrl
-    gpio i2s pdm i3c_slv vad swreg_aon swreg_lsc dma
-    ppc pmu mpc hxautoi2c_mst csirx csitx adcc pwm
-    inpovparser adcc_hv u55 2x2 5x5
-)
-foreach(IP ${SDK_DRIVERS_IP_LIST})
-    list(APPEND SDK_COMMON_DEFINITIONS "IP_${IP}")
-endforeach()
-
-# Driver IP instance definitions (required for peripheral initialization)
-# These correspond to DRIVERS_IP_INSTANCE in the SDK makefile
-# (see drivers/mk_cfg/drv_onecore_cm55m_s_only.mk)
-set(SDK_DRIVERS_IP_INSTANCE
-    # RTC instances
-    RTC0 RTC1 RTC2
-    # Timer instances
-    TIMER0 TIMER1 TIMER2 TIMER3 TIMER4 TIMER5 TIMER6 TIMER7 TIMER8
-    # Watchdog instances
-    WDT0 WDT1
-    # DMA instances
-    DMA0 DMA1 DMA2 DMA3
-    # UART instances
-    UART0 UART1 UART2
-    # I2C instances
-    IIC_HOST_SENSOR IIC_HOST IIC_HOST_MIPI IIC_SLAVE0 IIC_SLAVE1
-    # SPI instances
-    SSPI_HOST QSPI_HOST OSPI_HOST SSPI_SLAVE
-    # GPIO instances (critical for platform_driver_init)
-    GPIO_G0 GPIO_G1 GPIO_G2 GPIO_G3 SB_GPIO AON_GPIO
-    # Audio/misc instances
-    I2S_HOST I2S_SLAVE IIIC_SLAVE0 IIIC_SLAVE1
-    # PWM/ADC instances
-    PWM0 PWM1 PWM2 ADCC ADCC_HV TS
-)
-foreach(INST ${SDK_DRIVERS_IP_INSTANCE})
-    list(APPEND SDK_COMMON_DEFINITIONS "IP_INST_${INST}")
-endforeach()
-
-# Common include directories
-set(SDK_COMMON_INCLUDE_DIRS
+# Cross-module include directories needed due to tight coupling in SDK code
+# (e.g., device sources include board.h, board sources include timer_interface.h,
+#  ethosu_driver.c includes WE2_core.h, xprintf.c includes WE2_device.h)
+# These will remain until the SDK code itself is refactored for better separation
+set(SDK_CROSS_MODULE_INCLUDE_DIRS
+    # CMSIS core
     ${SDK_ROOT}/CMSIS
-    ${SDK_ROOT}/CMSIS/Driver
     ${SDK_ROOT}/CMSIS/Driver/Include
+    # Device
     ${SDK_ROOT}/device
     ${SDK_ROOT}/device/inc
     ${SDK_ROOT}/device/clib
+    # Drivers
+    ${SDK_ROOT}/drivers
+    ${SDK_ROOT}/drivers/inc
+    # Board
     ${SDK_ROOT}/board
     ${SDK_ROOT}/board/${SDK_BOARD}
     ${SDK_ROOT}/board/${SDK_BOARD}/config
-    ${SDK_ROOT}/drivers
-    ${SDK_ROOT}/drivers/inc
+    # Interface
     ${SDK_ROOT}/interface
+    # Common library
     ${SDK_ROOT}/library/common
+    # Customer includes
     ${SDK_ROOT}/customer/sec_inc/seeed
 )
 
 # TrustZone security specific includes
 if(SDK_TRUSTZONE AND SDK_TRUSTZONE_TYPE STREQUAL "security")
-    list(APPEND SDK_COMMON_INCLUDE_DIRS
+    list(APPEND SDK_CROSS_MODULE_INCLUDE_DIRS
         ${SDK_ROOT}/drivers/seconly_inc
         ${SDK_ROOT}/trustzone/tz_cfg
     )
 endif()
+
+# SDK_COMMON_INCLUDE_DIRS - alias for linker.cmake compatibility
+set(SDK_COMMON_INCLUDE_DIRS ${SDK_CROSS_MODULE_INCLUDE_DIRS})
 
 # Common compile options for TrustZone security
 set(SDK_COMMON_COMPILE_OPTIONS "")
@@ -134,9 +102,16 @@ if(SDK_TRUSTZONE AND SDK_TRUSTZONE_TYPE STREQUAL "security")
 endif()
 
 # Function to apply SDK common settings to a target
+# This function provides the "glue" for SDK's tightly-coupled code
+# Individual modules still define their PUBLIC includes/defines for proper propagation
 function(sdk_apply_common_settings TARGET_NAME)
+    # Apply DEBUG/NDEBUG and SEMIHOST
     target_compile_definitions(${TARGET_NAME} PRIVATE ${SDK_COMMON_DEFINITIONS})
-    target_include_directories(${TARGET_NAME} PRIVATE ${SDK_COMMON_INCLUDE_DIRS})
+
+    # Apply cross-module includes needed for tight coupling in SDK code
+    target_include_directories(${TARGET_NAME} PRIVATE ${SDK_CROSS_MODULE_INCLUDE_DIRS})
+
+    # Apply TrustZone compile options
     if(SDK_COMMON_COMPILE_OPTIONS)
         target_compile_options(${TARGET_NAME} PRIVATE ${SDK_COMMON_COMPILE_OPTIONS})
     endif()

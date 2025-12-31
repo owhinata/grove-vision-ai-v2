@@ -6,16 +6,16 @@
 #
 # When SDK_TFLM_USE_CMSIS_NN=ON, CMSIS-NN optimized kernels are used.
 # CMSIS-NN library must also be built/linked separately (via cmsis_nn.cmake).
+#
+# Depends on: cmsis_core (for ARM headers)
 
 # Ensure SDK_ROOT is defined
 if(NOT DEFINED SDK_ROOT)
     message(FATAL_ERROR "SDK_ROOT must be defined before including tflm.cmake")
 endif()
 
-# Include base SDK configuration if not already included
-if(NOT DEFINED SDK_COMMON_INCLUDE_DIRS)
-    include(${CMAKE_CURRENT_LIST_DIR}/sdk_base.cmake)
-endif()
+# Include dependencies
+include(${CMAKE_CURRENT_LIST_DIR}/cmsis_core.cmake)
 
 # Configuration options
 option(SDK_TFLM_FORCE_PREBUILT "Use prebuilt TFLM library instead of building from source" OFF)
@@ -243,14 +243,24 @@ function(sdk_add_tflm_library TARGET_NAME)
     if(SDK_TFLM_FORCE_PREBUILT)
         # Use prebuilt library
         add_library(${TARGET_NAME} INTERFACE)
+
+        # Link against cmsis_core (inherits ARM headers)
+        target_link_libraries(${TARGET_NAME} INTERFACE cmsis_core)
+
+        # TFLM includes (INTERFACE - propagate to dependents)
         target_include_directories(${TARGET_NAME} INTERFACE ${SDK_TFLM_INCLUDE_DIRS})
+
+        # TFLM definitions (INTERFACE - propagate to dependents)
         foreach(DEF ${SDK_TFLM_DEFINITIONS})
             target_compile_definitions(${TARGET_NAME} INTERFACE ${DEF})
         endforeach()
+
+        # CMSIS-NN specific settings
         if(SDK_TFLM_USE_CMSIS_NN)
             target_compile_definitions(${TARGET_NAME} INTERFACE CMSIS_NN)
             target_include_directories(${TARGET_NAME} INTERFACE ${SDK_CMSIS_NN_INCLUDE_DIRS})
         endif()
+
         # Note: Prebuilt library should be linked directly in --start-group block
         message(STATUS "TFLM: Using prebuilt library (CMSIS-NN: ${SDK_TFLM_USE_CMSIS_NN})")
     else()
@@ -271,18 +281,21 @@ function(sdk_add_tflm_library TARGET_NAME)
         # Create static library
         add_library(${TARGET_NAME} STATIC ${TFLM_SOURCES})
 
-        # Apply SDK common settings
+        # Apply SDK common settings (temporary - will be removed as we modularize)
         sdk_apply_common_settings(${TARGET_NAME})
 
-        # Add include directories
+        # Link against cmsis_core (inherits ARM headers)
+        target_link_libraries(${TARGET_NAME} PUBLIC cmsis_core)
+
+        # TFLM includes (PUBLIC - propagate to dependents)
         target_include_directories(${TARGET_NAME} PUBLIC ${SDK_TFLM_INCLUDE_DIRS})
 
-        # Add compile definitions
+        # TFLM definitions (PUBLIC - propagate to dependents)
         foreach(DEF ${SDK_TFLM_DEFINITIONS})
             target_compile_definitions(${TARGET_NAME} PUBLIC ${DEF})
         endforeach()
 
-        # Add CMSIS-NN specific settings
+        # CMSIS-NN specific settings
         if(SDK_TFLM_USE_CMSIS_NN)
             target_compile_definitions(${TARGET_NAME} PUBLIC CMSIS_NN)
             target_include_directories(${TARGET_NAME} PUBLIC ${SDK_CMSIS_NN_INCLUDE_DIRS})
