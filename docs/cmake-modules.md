@@ -335,7 +335,7 @@ target_link_libraries(my_app PRIVATE fatfs)
 
 **Purpose:** CMSIS-compliant peripheral drivers (SPI, etc.).
 
-**Dependencies:** `device`
+**Dependencies:** `device`, `drivers_interface` (for IP_INST_* definitions)
 
 **Configuration Variables:**
 | Variable | Default | Description |
@@ -818,7 +818,7 @@ Application
     |
     +-- fatfs -------+-- device (middleware)
     |
-    +-- cmsis_drivers +-- device
+    +-- cmsis_drivers +-- device, drivers_interface
     |
     +-- i2c_comm -----+-- (prebuilt library)
     |

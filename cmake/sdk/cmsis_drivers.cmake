@@ -9,6 +9,9 @@ if(NOT DEFINED SDK_ROOT)
     message(FATAL_ERROR "SDK_ROOT must be defined before including cmsis_drivers.cmake")
 endif()
 
+# Include drivers module for IP_INST_* definitions (required by SPI driver)
+include(${CMAKE_CURRENT_LIST_DIR}/drivers.cmake)
+
 # Directory paths
 set(SDK_CMSIS_DRIVERS_ROOT ${SDK_ROOT}/cmsis_drivers)
 
@@ -54,6 +57,9 @@ function(sdk_add_cmsis_drivers_library TARGET_NAME)
 
     # Apply SDK common settings
     sdk_apply_common_settings(${TARGET_NAME})
+
+    # Link to drivers_interface for IP_INST_* definitions (required by SPI driver)
+    target_link_libraries(${TARGET_NAME} PRIVATE drivers_interface)
 
     # CMSIS Drivers includes (PUBLIC - propagate to dependents)
     target_include_directories(${TARGET_NAME} PUBLIC ${SDK_CMSIS_DRIVERS_INCLUDE_DIRS})
