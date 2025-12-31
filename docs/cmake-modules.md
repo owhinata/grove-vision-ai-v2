@@ -631,6 +631,12 @@ sdk_add_event_handler_library(TARGET_NAME)
 | `SDK_TFLM_USE_CMSIS_NN` | OFF | Use CMSIS-NN optimized kernels |
 | `SDK_TFLM_VERSION` | tflmtag2209_u55tag2205 | TFLM version |
 
+**Available TFLM Versions:**
+| Version | Description |
+|---------|-------------|
+| `tflmtag2209_u55tag2205` | Default version (Sept 2022 TFLite Micro + May 2022 Ethos-U55) |
+| `tflmtag2412_u55tag2411` | Newer version (Dec 2024 TFLite Micro + Nov 2024 Ethos-U55) |
+
 **PUBLIC Includes:**
 - TensorFlow Lite headers
 - Flatbuffers headers
@@ -638,7 +644,9 @@ sdk_add_event_handler_library(TARGET_NAME)
 - CMSIS-NN headers (when enabled)
 
 **PUBLIC Definitions:**
-- `TFLM2209_U55TAG2205`
+- Version-specific define (auto-generated from SDK_TFLM_VERSION):
+  - `TFLM2209_U55TAG2205` (for tflmtag2209_u55tag2205)
+  - `TFLM2412_U55TAG2411` (for tflmtag2412_u55tag2411)
 - `TF_LITE_STATIC_MEMORY`
 - `TF_LITE_MCU_DEBUG_LOG`
 - `ETHOSU_ARCH=u55`, `ETHOSU55`, `ETHOS_U`
