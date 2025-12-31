@@ -18,10 +18,10 @@ The modules are organized in a hierarchical dependency structure:
                          |
                       device
                          |
-         +-------+-------+-------+-------+
-         |       |       |       |       |
-       board  interface common trustzone_cfg ...
-         |
+         +-------+-------+-------+-------+-------+
+         |       |       |       |       |       |
+       board  interface common trustzone freertos ...
+         |                         _cfg
     [application]
 ```
 
@@ -218,6 +218,56 @@ sdk_add_common_library(TARGET_NAME)
 ```cmake
 sdk_add_trustzone_cfg_library(TARGET_NAME)  # TrustZone configuration
 sdk_add_nsc_library(TARGET_NAME)            # Non-Secure Callable veneers (S+NS only)
+```
+
+---
+
+### freertos.cmake
+
+**Type:** Static library
+
+**Purpose:** FreeRTOS kernel for real-time operating system support.
+
+**Dependencies:** `device`
+
+**Configuration Variables:**
+| Variable | Value | FreeRTOS Variant |
+|----------|-------|------------------|
+| `SDK_TRUSTZONE_FW_TYPE=1` | Security Only | NTZ with FREERTOS_SECONLY |
+| `SDK_TRUSTZONE_TYPE=security` | S+NS Secure | TZ_Sec |
+| `SDK_TRUSTZONE_TYPE=non-security` | S+NS Non-Secure | TZ_NonSec |
+| (no TrustZone) | Non-TrustZone | NTZ |
+
+**PUBLIC Includes:**
+- `${SDK_ROOT}/os/freertos/${variant}/freertos_kernel/include`
+- `${SDK_ROOT}/os/freertos/${variant}/freertos_kernel/portable/GCC/${port_dir}`
+- `${SDK_ROOT}/os/freertos/${variant}/config`
+
+**PUBLIC Definitions:**
+- `FREERTOS` - FreeRTOS enabled
+- `ENABLE_OS` - OS enabled (prevents device from defining SysTick_Handler/SVC_Handler)
+- `OS_FREERTOS` - OS type identifier
+- `configENABLE_MPU=0` - MPU disabled
+- `FREERTOS_SECONLY` - Security Only mode (when SDK_TRUSTZONE_FW_TYPE=1)
+- `FREERTOS_S` - Secure side (when TZ_Sec)
+- `FREERTOS_NS` - Non-Secure side (when TZ_NonSec)
+
+**Sources (NTZ/TZ_NonSec variants):**
+- FreeRTOS kernel: tasks.c, queue.c, list.c, timers.c, event_groups.c, stream_buffer.c, croutine.c
+- Port: port.c, portasm.c
+- Memory management: heap_4.c
+
+**Function:**
+```cmake
+sdk_add_freertos_library(TARGET_NAME)
+```
+
+**Usage:**
+```cmake
+set(SDK_USE_FREERTOS ON)
+include(${CMAKE_CURRENT_LIST_DIR}/freertos.cmake)
+sdk_add_freertos_library(freertos)
+target_link_libraries(my_app PRIVATE freertos)
 ```
 
 ---
@@ -486,6 +536,8 @@ Application
     |             |
     +-- trustzone_cfg
     |
+    +-- freertos ----+-- device
+    |
     +-- event_handler
     |
     +-- tflm_lib --------+-- cmsis_core
@@ -523,3 +575,37 @@ set(SDK_CMSIS_NN_FORCE_PREBUILT ON)
 |-----------------------|---------------|------------------|
 | 1 | Security Only (S) | trustzone_cfg |
 | 0 | Secure + Non-Secure (S+NS) | trustzone_cfg, nsc |
+
+### FreeRTOS Configurations
+
+| TrustZone Setting | FreeRTOS Variant | Kernel Type |
+|-------------------|------------------|-------------|
+| `SDK_TRUSTZONE_FW_TYPE=1` | NTZ | Full kernel with FREERTOS_SECONLY |
+| `SDK_TRUSTZONE_TYPE=security` (S+NS) | TZ_Sec | Secure port only |
+| `SDK_TRUSTZONE_TYPE=non-security` (S+NS) | TZ_NonSec | Full kernel |
+| No TrustZone | NTZ | Full kernel |
+
+**Example FreeRTOS Application:**
+```cmake
+# SDK configuration
+set(SDK_USE_FREERTOS ON)
+set(SDK_TRUSTZONE ON)
+set(SDK_TRUSTZONE_TYPE "security")
+set(SDK_TRUSTZONE_FW_TYPE 1)  # Security Only
+
+# Include modules
+include(${CMAKE_CURRENT_LIST_DIR}/freertos.cmake)
+
+# Create libraries
+sdk_add_freertos_library(freertos)
+
+# Link to application
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    freertos
+    board
+    device
+    interface
+    common
+    trustzone_cfg
+)
+```
