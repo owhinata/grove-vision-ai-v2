@@ -18,10 +18,10 @@ The modules are organized in a hierarchical dependency structure:
                    |
                 device
                    |
-         +-------+-------+-------+-------+-------+
-         |       |       |       |       |       |
-       board  interface common trustzone freertos ...
-         |                         _cfg
+         +-------+-------+-------+-------+-------+-------+-------+
+         |       |       |       |       |       |       |       |
+       board  interface common trustzone freertos fatfs cmsis_  i2c_comm
+         |                         _cfg           (MW)  drivers (prebuilt)
     [application]
 ```
 
@@ -231,22 +231,26 @@ sdk_add_nsc_library(TARGET_NAME)            # Non-Secure Callable veneers (S+NS 
 **Dependencies:** `device`
 
 **Configuration Variables:**
-| Variable | Value | FreeRTOS Variant |
-|----------|-------|------------------|
-| `SDK_TRUSTZONE_FW_TYPE=1` | Security Only | NTZ with FREERTOS_SECONLY |
-| `SDK_TRUSTZONE_TYPE=security` | S+NS Secure | TZ_Sec |
-| `SDK_TRUSTZONE_TYPE=non-security` | S+NS Non-Secure | TZ_NonSec |
-| (no TrustZone) | Non-TrustZone | NTZ |
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SDK_FREERTOS_VERSION` | freertos | FreeRTOS version (freertos or freertos_10_5_1) |
+
+| TrustZone Setting | FreeRTOS Variant |
+|-------------------|------------------|
+| `SDK_TRUSTZONE_FW_TYPE=1` | NTZ with FREERTOS_SECONLY |
+| `SDK_TRUSTZONE_TYPE=security` | TZ_Sec |
+| `SDK_TRUSTZONE_TYPE=non-security` | TZ_NonSec |
+| (no TrustZone) | NTZ |
 
 **PUBLIC Includes:**
-- `${SDK_ROOT}/os/freertos/${variant}/freertos_kernel/include`
-- `${SDK_ROOT}/os/freertos/${variant}/freertos_kernel/portable/GCC/${port_dir}`
-- `${SDK_ROOT}/os/freertos/${variant}/config`
+- `${SDK_ROOT}/os/${SDK_FREERTOS_VERSION}/${variant}/freertos_kernel/include`
+- `${SDK_ROOT}/os/${SDK_FREERTOS_VERSION}/${variant}/freertos_kernel/portable/GCC/${port_dir}`
+- `${SDK_ROOT}/os/${SDK_FREERTOS_VERSION}/${variant}/config`
 
 **PUBLIC Definitions:**
 - `FREERTOS` - FreeRTOS enabled
 - `ENABLE_OS` - OS enabled (prevents device from defining SysTick_Handler/SVC_Handler)
-- `OS_FREERTOS` - OS type identifier
+- `OS_FREERTOS` or `OS_FREERTOS_10_5_1` - OS type identifier (based on version)
 - `configENABLE_MPU=0` - MPU disabled
 - `FREERTOS_SECONLY` - Security Only mode (when SDK_TRUSTZONE_FW_TYPE=1)
 - `FREERTOS_S` - Secure side (when TZ_Sec)
@@ -268,6 +272,132 @@ set(SDK_USE_FREERTOS ON)
 include(${CMAKE_CURRENT_LIST_DIR}/freertos.cmake)
 sdk_add_freertos_library(freertos)
 target_link_libraries(my_app PRIVATE freertos)
+```
+
+---
+
+## Middleware Modules
+
+### fatfs.cmake
+
+**Type:** Static library
+
+**Purpose:** FatFS file system middleware with configurable storage ports.
+
+**Dependencies:** `device`
+
+**Configuration Variables:**
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SDK_FATFS_PORT_LIST` | mmc_spi | Storage ports (semicolon-separated) |
+| `SDK_FATFS_FFCONF_DIR` | (none) | Directory containing app-specific ffconf.h |
+
+**Available Ports:**
+- `mmc_spi` - MMC/SD card via SPI
+- `mmc_sdio` - MMC/SD card via SDIO
+- `flash` - Flash storage
+- `ram` - RAM disk
+
+**PUBLIC Includes:**
+- `${SDK_ROOT}/middleware/fatfs/source`
+- `${SDK_FATFS_FFCONF_DIR}` (if specified)
+- Port-specific directories
+
+**PUBLIC Definitions:**
+- `MID_FATFS` - FatFS middleware enabled
+- `FATFS_PORT_${port}` - Port-specific defines (e.g., FATFS_PORT_mmc_spi)
+
+**Sources:**
+- ff.c, ffsystem.c, ffunicode.c, diskio.c
+- Port-specific driver files
+
+**Function:**
+```cmake
+sdk_add_fatfs_library(TARGET_NAME)
+```
+
+**Usage:**
+```cmake
+# Configure before including
+set(SDK_FATFS_PORT_LIST "mmc_spi" CACHE STRING "" FORCE)
+set(SDK_FATFS_FFCONF_DIR "${SDK_APP_DIR}" CACHE PATH "" FORCE)
+
+include(${CMAKE_CURRENT_LIST_DIR}/fatfs.cmake)
+sdk_add_fatfs_library(fatfs)
+target_link_libraries(my_app PRIVATE fatfs)
+```
+
+---
+
+### cmsis_drivers.cmake
+
+**Type:** Static library
+
+**Purpose:** CMSIS-compliant peripheral drivers (SPI, etc.).
+
+**Dependencies:** `device`
+
+**Configuration Variables:**
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SDK_CMSIS_DRIVERS_LIST` | (none) | Drivers to build (semicolon-separated) |
+
+**Available Drivers:**
+- `SPI` - SPI driver (CMSIS Driver_SPI interface)
+
+**PUBLIC Includes:**
+- `${SDK_ROOT}/cmsis_drivers/${driver}`
+
+**PUBLIC Definitions:**
+- `CMSIS_DRIVERS_${driver}` - Driver-specific defines (e.g., CMSIS_DRIVERS_SPI)
+
+**Function:**
+```cmake
+sdk_add_cmsis_drivers_library(TARGET_NAME)
+```
+
+**Usage:**
+```cmake
+# Configure before including
+set(SDK_CMSIS_DRIVERS_LIST "SPI" CACHE STRING "" FORCE)
+
+include(${CMAKE_CURRENT_LIST_DIR}/cmsis_drivers.cmake)
+sdk_add_cmsis_drivers_library(cmsis_drivers)
+target_link_libraries(my_app PRIVATE cmsis_drivers)
+```
+
+---
+
+### i2c_comm.cmake
+
+**Type:** INTERFACE library (prebuilt only)
+
+**Purpose:** I2C communication library for host communication.
+
+**PUBLIC Includes:**
+- `${SDK_ROOT}/library/i2c_comm`
+
+**PUBLIC Definitions:**
+- `LIB_I2C_COMM` - I2C communication library enabled
+
+**Prebuilt Library:**
+- `${SDK_ROOT}/prebuilt_libs/gnu/lib_i2c_comm.a`
+
+**Function:**
+```cmake
+sdk_add_i2c_comm_library(TARGET_NAME)
+```
+
+**Usage:**
+```cmake
+include(${CMAKE_CURRENT_LIST_DIR}/i2c_comm.cmake)
+sdk_add_i2c_comm_library(i2c_comm)
+
+# Link both interface and prebuilt
+target_link_libraries(my_app PRIVATE
+    i2c_comm                    # For includes/defines
+    ${SDK_I2C_COMM_PREBUILT}    # Actual library in link group
+)
 ```
 
 ---
@@ -685,6 +815,12 @@ Application
     +-- trustzone_cfg
     |
     +-- freertos ----+-- device
+    |
+    +-- fatfs -------+-- device (middleware)
+    |
+    +-- cmsis_drivers +-- device
+    |
+    +-- i2c_comm -----+-- (prebuilt library)
     |
     +-- event_handler
     |
