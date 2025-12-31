@@ -80,6 +80,14 @@ function(sdk_apply_linker_settings TARGET_NAME)
         -Wl,-Map=${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}.map
     )
 
+    # Add TrustZone CMSE implib flag for security builds
+    if(SDK_TRUSTZONE AND SDK_TRUSTZONE_TYPE STREQUAL "security")
+        target_link_options(${TARGET_NAME} PRIVATE -Wl,--cmse-implib)
+    endif()
+
+    # Note: System libraries (-lm -lc_nano -lgcc -lstdc++_nano) should be added
+    # inside the --start-group/--end-group block in the application CMakeLists.txt
+
     # Add post-build commands for binary generation
     # Extract only ROM sections to avoid huge gaps between ROM (0x10000000) and RAM (0x30000000)
     add_custom_command(TARGET ${TARGET_NAME} POST_BUILD

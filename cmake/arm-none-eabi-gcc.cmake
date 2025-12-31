@@ -4,6 +4,9 @@
 set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_PROCESSOR arm)
 
+# Always generate compile_commands.json for IDE integration
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # Determine project root (go up from cmake/ directory)
 get_filename_component(TOOLCHAIN_FILE_DIR "${CMAKE_CURRENT_LIST_FILE}" DIRECTORY)
 get_filename_component(PROJECT_ROOT "${TOOLCHAIN_FILE_DIR}/.." ABSOLUTE)
@@ -45,23 +48,30 @@ set(CMAKE_SIZE "${ARM_TOOLCHAIN_PATH}/arm-none-eabi-size" CACHE FILEPATH "Size" 
 set(CPU_FLAGS "-mthumb -mcpu=cortex-m55 -mfloat-abi=hard")
 
 # Common compile flags
-set(COMMON_FLAGS "${CPU_FLAGS} -ffunction-sections -fdata-sections -Wall -fstack-usage")
+# Note: -flax-vector-conversions is required for CMSIS-NN/TFLM MVE vector type compatibility
+# Note: -specs=nano.specs enables newlib-nano for reduced code size
+# Note: -O2 optimization level matches SDK build
+set(COMMON_FLAGS "${CPU_FLAGS} -ffunction-sections -fdata-sections -Wall -fstack-usage -flax-vector-conversions -specs=nano.specs -O2")
 
 # C flags
 set(CMAKE_C_FLAGS_INIT "${COMMON_FLAGS} -std=gnu11")
-set(CMAKE_C_FLAGS_DEBUG_INIT "-g -DDEBUG")
-set(CMAKE_C_FLAGS_RELEASE_INIT "-DNDEBUG")
+set(CMAKE_C_FLAGS_DEBUG_INIT "-g")
+set(CMAKE_C_FLAGS_RELEASE_INIT "")
 
 # C++ flags
 set(CMAKE_CXX_FLAGS_INIT "${COMMON_FLAGS} -std=c++17 -fno-rtti -fno-exceptions -fno-threadsafe-statics")
-set(CMAKE_CXX_FLAGS_DEBUG_INIT "-g -DDEBUG")
-set(CMAKE_CXX_FLAGS_RELEASE_INIT "-DNDEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG_INIT "-g")
+set(CMAKE_CXX_FLAGS_RELEASE_INIT "")
 
 # ASM flags
 set(CMAKE_ASM_FLAGS_INIT "${COMMON_FLAGS} -x assembler-with-cpp")
 
 # Linker flags
-set(CMAKE_EXE_LINKER_FLAGS_INIT "${CPU_FLAGS} -Wl,--gc-sections -Wl,--sort-section=alignment --specs=nosys.specs")
+# Note: -specs=nano.specs is already in compile flags (propagates to linker)
+# Note: -Wl,--no-warn-rwx-segments suppresses RWX segment warnings on GCC 12+
+# Note: -Wl,-print-memory-usage shows memory usage after linking
+# Note: -Wl,--cref generates cross-reference table
+set(CMAKE_EXE_LINKER_FLAGS_INIT "${CPU_FLAGS} -Wl,--gc-sections -Wl,--sort-section=alignment -Wl,--no-warn-rwx-segments -Wl,-print-memory-usage -Wl,--cref")
 
 # Don't try to run test executables on host
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)

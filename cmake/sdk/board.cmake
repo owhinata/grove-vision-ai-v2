@@ -34,6 +34,9 @@ if(SDK_BOARD STREQUAL "epii_evb")
     list(APPEND SDK_BOARD_DEFINITIONS EPII_EVB)
 endif()
 
+# LIB_COMMON enables xprintf support in board.c
+list(APPEND SDK_BOARD_DEFINITIONS LIB_COMMON)
+
 # Create board library target
 function(sdk_add_board_library TARGET_NAME)
     add_library(${TARGET_NAME} STATIC ${SDK_BOARD_SOURCES})

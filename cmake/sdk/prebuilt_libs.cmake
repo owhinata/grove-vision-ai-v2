@@ -15,17 +15,11 @@ endif()
 set(SDK_PREBUILT_DIR ${SDK_ROOT}/prebuilt_libs/gnu)
 
 # Core prebuilt libraries for basic functionality
+# Note: libcommon.a is now built from source via common.cmake
+# Note: libtrustzone_cfg.a is now built from source via trustzone.cmake
 set(SDK_PREBUILT_CORE_LIBS
     ${SDK_PREBUILT_DIR}/libdriver.a
-    ${SDK_PREBUILT_DIR}/libcommon.a
 )
-
-# TrustZone configuration library
-if(SDK_TRUSTZONE)
-    list(APPEND SDK_PREBUILT_CORE_LIBS
-        ${SDK_PREBUILT_DIR}/libtrustzone_cfg.a
-    )
-endif()
 
 # Optional prebuilt libraries
 set(SDK_PREBUILT_PWRMGMT ${SDK_PREBUILT_DIR}/libpwrmgmt.a)

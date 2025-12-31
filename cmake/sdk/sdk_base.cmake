@@ -21,6 +21,9 @@ option(SDK_USE_RTX "Use RTX" OFF)
 option(SDK_SEMIHOST "Use semihosting" OFF)
 option(SDK_DEBUG "Debug build" ON)
 
+# IC package type
+set(SDK_IC_PACKAGE "WLCSP65" CACHE STRING "IC package type")
+
 # Common definitions
 set(SDK_COMMON_DEFINITIONS
     __GNU__
@@ -28,6 +31,10 @@ set(SDK_COMMON_DEFINITIONS
     ARMCM${SDK_CORTEX_M}
     CM55_BIG
     IC_VERSION=${SDK_IC_VER}
+    IC_PACKAGE_${SDK_IC_PACKAGE}
+    COREV_0P9V
+    seeed
+    EPII_EVB
 )
 
 if(SDK_DEBUG)
@@ -37,7 +44,7 @@ else()
 endif()
 
 if(SDK_TRUSTZONE)
-    list(APPEND SDK_COMMON_DEFINITIONS TRUSTZONE)
+    list(APPEND SDK_COMMON_DEFINITIONS TRUSTZONE TRUSTZONE_CFG)
     if(SDK_TRUSTZONE_TYPE STREQUAL "security")
         list(APPEND SDK_COMMON_DEFINITIONS TRUSTZONE_SEC)
         if(SDK_TRUSTZONE_FW_TYPE EQUAL 1)
@@ -65,18 +72,51 @@ foreach(IP ${SDK_DRIVERS_IP_LIST})
     list(APPEND SDK_COMMON_DEFINITIONS "IP_${IP}")
 endforeach()
 
+# Driver IP instance definitions (required for peripheral initialization)
+# These correspond to DRIVERS_IP_INSTANCE in the SDK makefile
+# (see drivers/mk_cfg/drv_onecore_cm55m_s_only.mk)
+set(SDK_DRIVERS_IP_INSTANCE
+    # RTC instances
+    RTC0 RTC1 RTC2
+    # Timer instances
+    TIMER0 TIMER1 TIMER2 TIMER3 TIMER4 TIMER5 TIMER6 TIMER7 TIMER8
+    # Watchdog instances
+    WDT0 WDT1
+    # DMA instances
+    DMA0 DMA1 DMA2 DMA3
+    # UART instances
+    UART0 UART1 UART2
+    # I2C instances
+    IIC_HOST_SENSOR IIC_HOST IIC_HOST_MIPI IIC_SLAVE0 IIC_SLAVE1
+    # SPI instances
+    SSPI_HOST QSPI_HOST OSPI_HOST SSPI_SLAVE
+    # GPIO instances (critical for platform_driver_init)
+    GPIO_G0 GPIO_G1 GPIO_G2 GPIO_G3 SB_GPIO AON_GPIO
+    # Audio/misc instances
+    I2S_HOST I2S_SLAVE IIIC_SLAVE0 IIIC_SLAVE1
+    # PWM/ADC instances
+    PWM0 PWM1 PWM2 ADCC ADCC_HV TS
+)
+foreach(INST ${SDK_DRIVERS_IP_INSTANCE})
+    list(APPEND SDK_COMMON_DEFINITIONS "IP_INST_${INST}")
+endforeach()
+
 # Common include directories
 set(SDK_COMMON_INCLUDE_DIRS
     ${SDK_ROOT}/CMSIS
     ${SDK_ROOT}/CMSIS/Driver
+    ${SDK_ROOT}/CMSIS/Driver/Include
     ${SDK_ROOT}/device
     ${SDK_ROOT}/device/inc
     ${SDK_ROOT}/device/clib
+    ${SDK_ROOT}/board
     ${SDK_ROOT}/board/${SDK_BOARD}
     ${SDK_ROOT}/board/${SDK_BOARD}/config
+    ${SDK_ROOT}/drivers
     ${SDK_ROOT}/drivers/inc
     ${SDK_ROOT}/interface
     ${SDK_ROOT}/library/common
+    ${SDK_ROOT}/customer/sec_inc/seeed
 )
 
 # TrustZone security specific includes
