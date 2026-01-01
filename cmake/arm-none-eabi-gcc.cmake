@@ -34,14 +34,21 @@ if(NOT DEFINED ARM_TOOLCHAIN_PATH)
     set(ARM_TOOLCHAIN_PATH "${PROJECT_ROOT}/toolchain/arm-gnu-toolchain-13.2.Rel1-${TOOLCHAIN_SUFFIX}-arm-none-eabi/bin")
 endif()
 
+# Executable extension (Windows needs .exe)
+if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows" OR MINGW)
+    set(EXE_SUFFIX ".exe")
+else()
+    set(EXE_SUFFIX "")
+endif()
+
 # Set compilers directly (required for cross-compilation)
-set(CMAKE_C_COMPILER "${ARM_TOOLCHAIN_PATH}/arm-none-eabi-gcc" CACHE FILEPATH "C compiler" FORCE)
-set(CMAKE_CXX_COMPILER "${ARM_TOOLCHAIN_PATH}/arm-none-eabi-g++" CACHE FILEPATH "C++ compiler" FORCE)
-set(CMAKE_ASM_COMPILER "${ARM_TOOLCHAIN_PATH}/arm-none-eabi-gcc" CACHE FILEPATH "ASM compiler" FORCE)
-set(CMAKE_AR "${ARM_TOOLCHAIN_PATH}/arm-none-eabi-ar" CACHE FILEPATH "Archiver" FORCE)
-set(CMAKE_OBJCOPY "${ARM_TOOLCHAIN_PATH}/arm-none-eabi-objcopy" CACHE FILEPATH "Objcopy" FORCE)
-set(CMAKE_OBJDUMP "${ARM_TOOLCHAIN_PATH}/arm-none-eabi-objdump" CACHE FILEPATH "Objdump" FORCE)
-set(CMAKE_SIZE "${ARM_TOOLCHAIN_PATH}/arm-none-eabi-size" CACHE FILEPATH "Size" FORCE)
+set(CMAKE_C_COMPILER "${ARM_TOOLCHAIN_PATH}/arm-none-eabi-gcc${EXE_SUFFIX}" CACHE FILEPATH "C compiler" FORCE)
+set(CMAKE_CXX_COMPILER "${ARM_TOOLCHAIN_PATH}/arm-none-eabi-g++${EXE_SUFFIX}" CACHE FILEPATH "C++ compiler" FORCE)
+set(CMAKE_ASM_COMPILER "${ARM_TOOLCHAIN_PATH}/arm-none-eabi-gcc${EXE_SUFFIX}" CACHE FILEPATH "ASM compiler" FORCE)
+set(CMAKE_AR "${ARM_TOOLCHAIN_PATH}/arm-none-eabi-ar${EXE_SUFFIX}" CACHE FILEPATH "Archiver" FORCE)
+set(CMAKE_OBJCOPY "${ARM_TOOLCHAIN_PATH}/arm-none-eabi-objcopy${EXE_SUFFIX}" CACHE FILEPATH "Objcopy" FORCE)
+set(CMAKE_OBJDUMP "${ARM_TOOLCHAIN_PATH}/arm-none-eabi-objdump${EXE_SUFFIX}" CACHE FILEPATH "Objdump" FORCE)
+set(CMAKE_SIZE "${ARM_TOOLCHAIN_PATH}/arm-none-eabi-size${EXE_SUFFIX}" CACHE FILEPATH "Size" FORCE)
 
 # Cortex-M55 specific flags with FPU support
 # The prebuilt SDK libraries use hard float ABI, so we must match
